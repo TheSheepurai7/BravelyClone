@@ -57,14 +57,14 @@ public class StatDisplay : MonoBehaviour
         switch (stat)
         {
             case Stats.HP:
-                text.text = prefix + GameData.instance.GetStat(character, stat).ToString();
-                //I need to record the current HP percentage and find a way to color the stat based on that
-                //I think what I need to actually do is return a vector2 with the current hp percent and max hp THEN work off of that
+                Vector2 hp = GameData.instance.GetPercentageStat(character, Stats.HP);
+                text.text = ((int)(hp.y * hp.x)).ToString() + "/" + ((int)hp.y).ToString();
+                if (hp.x > 0) { text.color = new Color(1, hp.x, hp.x); } else { text.color = Color.black; }
                 break;
             case Stats.MP:
-                text.text = prefix + GameData.instance.GetStat(character, stat).ToString();
-                //I need to record the current MP percentage and find a way to color the stat based on that
-                //I think what I need to actually do is return a vector2 with the current mp percent and max mp THEN work off of that
+                Vector2 mp = GameData.instance.GetPercentageStat(character, Stats.MP);
+                text.text = ((int)(mp.y * mp.x)).ToString() + "/" + ((int)mp.y).ToString();
+                if (mp.x > 0) { text.color = new Color(1, mp.x, 1); } else { text.color = Color.black; }
                 break;
         }
     }

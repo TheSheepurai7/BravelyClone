@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System.Security.Cryptography;
 using UnityEngine;
 
+//Seems I need a failsafe for debugging, though.
 public enum Character { ANY, ALEC, MARISA, JENNA, GARETH }
 public enum Stats { NAME, LVL, HP, MP, STR, VIT, INT, MND, AGI, JOB, JLV }
 
