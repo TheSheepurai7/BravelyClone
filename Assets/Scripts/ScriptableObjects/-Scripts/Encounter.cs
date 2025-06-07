@@ -10,15 +10,8 @@ public class Encounter : ScriptableObject
 
     [SerializeField] Enemy[] enemies;
 
-    public ReadOnlyEnemyStruct[] GetEncounterData()
+    public Enemy[] EnemyList()
     {
-        ReadOnlyEnemyStruct[] returnValue = new ReadOnlyEnemyStruct[enemies.Length];
-
-        for(int i = 0; i < returnValue.Length; i++)
-        {
-            returnValue[i] = enemies[i].GetInfo();
-        }
-
-        return returnValue;
+        return enemies;
     }
 }

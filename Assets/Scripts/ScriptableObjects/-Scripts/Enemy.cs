@@ -6,42 +6,6 @@ using UnityEngine.UI;
 public enum Element { FIRE, WATER, EARTH, WIND, LIGHT, DARK }
 public enum Status { POISON, BLIND, SILENCE, PARALYZE, CONFUSE, CHARM, OUT, DOOM, BERSERK }
 
-public readonly struct ReadOnlyEnemyStruct
-{
-    public readonly string name;
-    public readonly Sprite sprite;
-    public readonly int hP;
-    public readonly  int mP;
-    public readonly int pAtk;
-    public readonly int mAtk;
-    public readonly int iNT;
-    public readonly int pDef;
-    public readonly int mDef;
-    public readonly int mND;
-    public readonly int sPD;
-    public readonly int jP;
-    public readonly int xP;
-    public readonly int pG;
-
-    public ReadOnlyEnemyStruct(string name, Sprite sprite, int hP, int mP, int pAtk, int mAtk, int iNT, int pDef, int mDef, int mND, int sPD, int jP, int xP, int pG)
-    {
-        this.name = name;
-        this.sprite = sprite;
-        this.hP = hP;
-        this.mP = mP;
-        this.pAtk = pAtk;
-        this.mAtk = mAtk;
-        this.iNT = iNT;
-        this.pDef = pDef;
-        this.mDef = mDef;
-        this.mND = mND;
-        this.sPD = sPD;
-        this.jP = jP;
-        this.xP = xP;
-        this.pG = pG;
-    }
-}
-
 [CreateAssetMenu(fileName = "Enemy", menuName = "Scriptable Objects/Enemy")]
 public class Enemy : ScriptableObject
 {
@@ -72,8 +36,23 @@ public class Enemy : ScriptableObject
     //The AI is the AI
     [SerializeField] AI ai;
 
-    public ReadOnlyEnemyStruct GetInfo()
+    //For when I need just the sprite
+    public Sprite GetSprite() { return sprite; }
+
+    //For when I need the AI
+    public AI GetAI() { return ai; }
+
+    //The rewards are small enough that I can probably use pointers for them
+    public void CopyRewards(ref int inJP, ref int inXP, ref int inPG)
     {
-        return new ReadOnlyEnemyStruct(name, sprite, hP, mP, pAtk, mAtk, iNT, pDef, mDef, mND, sPD, jP, xP, pG);
+        inJP = jP;
+        inXP = xP;
+        inPG = pG;
+    }
+
+    //For when I need everything else
+    public StatBlock ExportStats()
+    {
+        return new StatBlock(hP, mP, pAtk, mAtk, iNT, pDef, mDef, mND, sPD);
     }
 }

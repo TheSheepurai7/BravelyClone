@@ -14,10 +14,8 @@ public class GenerateEnemy : MonoBehaviour
 
     //Misc variables
     GameObject enemyGFXTemplate;
-    public ReadOnlyEnemyStruct[] encounterData { get; private set; }
 
-    // Start is called before the first frame update
-    void OnEnable()
+    void Awake()
     {
         //Enforce singleton
         if (instance == null) { instance = this; } else { Destroy(this); }
@@ -38,41 +36,47 @@ public class GenerateEnemy : MonoBehaviour
             }
         } while (liveEncounter == null);
 
-        //Store encounter data
-        encounterData = liveEncounter.GetEncounterData();
-
-        //Create names for the encounters
-        string[] names = new string[encounterData.Length];
+        //Since the enemy structs themselves don't carry names, I guess I'll have to generate one from scratch and pass it along with the encounter
+        string[] names = new string[liveEncounter.EnemyList().Length];
         for (int i = 0; i < names.Length; i++)
         {
-            //Check previous iterations for if there are others with the same name
+            string baseName = liveEncounter.EnemyList()[i].name;
             if (i > 0)
             {
-                int counter = 0;
+                int counter = 1;
                 for (int i2 = 0; i2 < i; i2++)
                 {
-                    if (encounterData[i].name == encounterData[i2].name)
+                    if (baseName == liveEncounter.EnemyList()[i2].name)
                     {
+                        if (counter == 1) { names[i2] = baseName + " 1"; }
                         counter++;
-                        names[i2] = encounterData[i2].name + " " + counter;
                     }
                 }
-                if (counter > 0) { names[i] = encounterData[i].name + " " + counter; }
+                if (counter > 1) { names[i] = baseName + " " + counter; }
+                else { names[i] = baseName; }
             }
         }
 
-        //Create graphics for the encounters
-        GameObject gfx;
-        for (int i = 0; i < encounterData.Length; i++)
+        //Create graphics
+        for (int i = 0; i < names.Length; i++)
         {
-            gfx = Instantiate(enemyGFXTemplate);
+            GameObject gfx = Instantiate(enemyGFXTemplate);
             gfx.transform.SetParent(transform);
-            gfx.transform.localScale = Vector3.one;
-            gfx.GetComponentInChildren<Image>().sprite = encounterData[i].sprite;
+            gfx.GetComponentInChildren<Image>().sprite = liveEncounter.EnemyList()[i].GetSprite();
             gfx.GetComponentInChildren<Text>().text = names[i];
         }
 
-        //Give the Battle Manager its encounter data
-        BattleManager.instance.GenerateEnemy(encounterData);
+        //Pass the encounter and names off to the battle manager
+        BattleManager.instance.GenerateEnemies(liveEncounter, names);
+    }
+
+    public void DisplayGuard(int actorID, bool display)
+    {
+
+    }
+
+    public void CombatantToggle(int actorId, bool toggle)
+    {
+
     }
 }
