@@ -21,11 +21,11 @@ public class GenerateEnemy : MonoBehaviour
         if (instance == null) { instance = this; } else { Destroy(this); }
 
         //Store the GFX template if it's not already stored
-        if (enemyGFXTemplate == null) { enemyGFXTemplate = Resources.Load<GameObject>("Enemy"); }
+        if (enemyGFXTemplate == null) { enemyGFXTemplate = Resources.Load<GameObject>("Prefabs/Enemy"); }
 
         //Select a random encounter and make sure it's in the player party's avg level range
-        int avgLvl = (GameData.instance.GetStat(Character.ALEC, Stats.LVL) + GameData.instance.GetStat(Character.MARISA, Stats.LVL) +
-            GameData.instance.GetStat(Character.JENNA, Stats.LVL) + GameData.instance.GetStat(Character.GARETH, Stats.LVL)) / 4;
+        int avgLvl = (GameData.instance.GetCharacter(Character.ALEC).GetStat(Stats.LVL) + GameData.instance.GetCharacter(Character.MARISA).GetStat(Stats.LVL) +
+            GameData.instance.GetCharacter(Character.JENNA).GetStat(Stats.LVL) + GameData.instance.GetCharacter(Character.GARETH).GetStat(Stats.LVL)) / 4;
 
         do
         {
@@ -70,6 +70,7 @@ public class GenerateEnemy : MonoBehaviour
         BattleManager.instance.GenerateEnemies(liveEncounter, names);
     }
 
+    //Attach these to events maybe
     public void DisplayGuard(int actorID, bool display)
     {
 

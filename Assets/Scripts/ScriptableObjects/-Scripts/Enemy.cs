@@ -6,8 +6,9 @@ using UnityEngine.UI;
 public enum Element { FIRE, WATER, EARTH, WIND, LIGHT, DARK }
 public enum Status { POISON, BLIND, SILENCE, PARALYZE, CONFUSE, CHARM, OUT, DOOM, BERSERK }
 
+//I need an interface for exporting stats and stuff
 [CreateAssetMenu(fileName = "Enemy", menuName = "Scriptable Objects/Enemy")]
-public class Enemy : ScriptableObject
+public class Enemy : ScriptableObject, IGetStat
 {
     //Its stats
     [SerializeField] Sprite sprite;
@@ -36,8 +37,41 @@ public class Enemy : ScriptableObject
     //The AI is the AI
     [SerializeField] AI ai;
 
+    //Interface functions
+    public string GetName(Stats stat)
+    {
+        return name;
+    }
+
+    public Vector2 GetCompoundStat(Stats stat)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public int GetStat(Stats stat)
+    {
+        switch (stat)
+        {
+            case Stats.HP: return hP;
+            case Stats.MP: return mP;
+            case Stats.PATK: return pAtk;
+            case Stats.MATK: return mAtk;
+            case Stats.INT: return iNT;
+            case Stats.PDEF: return pDef;
+            case Stats.MDEF: return mDef;
+            case Stats.MND: return mND;
+            case Stats.AGI: return sPD;
+            default: throw new System.NullReferenceException("That stat doesn't exist in this struct");
+        }
+    }
+
     //For when I need just the sprite
     public Sprite GetSprite() { return sprite; }
+
+    public float GetFloatStat(Stats stat)
+    {
+        throw new System.NotImplementedException();
+    }
 
     //For when I need the AI
     public AI GetAI() { return ai; }
@@ -48,11 +82,5 @@ public class Enemy : ScriptableObject
         inJP = jP;
         inXP = xP;
         inPG = pG;
-    }
-
-    //For when I need everything else
-    public StatBlock ExportStats()
-    {
-        return new StatBlock(hP, mP, pAtk, mAtk, iNT, pDef, mDef, mND, sPD);
     }
 }

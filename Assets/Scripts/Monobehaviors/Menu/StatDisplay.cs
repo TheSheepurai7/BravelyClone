@@ -1,79 +1,74 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
-//Maybe I should just look for what ever is in the textbox already and use THAT as a prefix
-[RequireComponent(typeof(Text))]
 public class StatDisplay : MonoBehaviour
 {
     //Serializable members
-    [SerializeField] string prefix;
     [SerializeField] Character character;
     [SerializeField] Stats stat;
 
     //Private members
+    Image image;
     Text text;
+    Character focus = Character.ANY;
 
-    private void OnEnable()
+    void Awake()
     {
-        //Cache text
-        text = GetComponent<Text>();
-
-        //Display the stat
-        if (stat == Stats.NAME) { DisplayName(character); }
-        else if (stat == Stats.JOB) { DisplayJob(character); }
-        else if (stat == Stats.JLV) { DisplayJlv(character); }
-        else if (stat == Stats.HP || stat == Stats.MP) { DisplayHPMP(character, stat); }
-        else { DisplayStat(character, stat); }
-    }
-
-    void DisplayName(Character character)
-    {
-        switch (character)
+        //I should rewrite the cache function so that it deletes itself if there is neither an Image component or a Text component
+        if (GetComponent<Image>() == null && GetComponent<Text>() == null)
         {
-            case Character.ALEC: text.text = "Alec"; break;
-            case Character.MARISA: text.text = "Marisa"; break;
-            case Character.JENNA: text.text = "Jenna"; break;
-            case Character.GARETH: text.text = "Gareth"; break;
+            Destroy(this);
         }
-    }
-
-    void DisplayJob(Character character)
-    {
-        text.text = GameData.instance.GetJob(character);
-    }
-
-    //This works a little differently from normal stats so I should give it its own function
-    void DisplayJlv(Character character)
-    {
-        if (GameData.instance.GetStat(character, Stats.JLV) > 0) { text.text = "Lv. " + GameData.instance.GetStat(character, Stats.JLV).ToString(); }
-        else { text.text = ""; }
-    }
-
-    //HP and MP have coloring to do, so they need to be separate
-    void DisplayHPMP(Character character, Stats stat)
-    {
-        switch (stat)
+        else
         {
-            case Stats.HP:
-                Vector2 hp = GameData.instance.GetPercentageStat(character, Stats.HP);
-                text.text = ((int)(hp.y * hp.x)).ToString() + "/" + ((int)hp.y).ToString();
-                if (hp.x > 0) { text.color = new Color(1, hp.x, hp.x); } else { text.color = Color.black; }
-                break;
-            case Stats.MP:
-                Vector2 mp = GameData.instance.GetPercentageStat(character, Stats.MP);
-                text.text = ((int)(mp.y * mp.x)).ToString() + "/" + ((int)mp.y).ToString();
-                if (mp.x > 0) { text.color = new Color(1, mp.x, 1); } else { text.color = Color.black; }
-                break;
+            if (TryGetComponent(out Image inImage)) { image = inImage; }
+            if (TryGetComponent(out Text inText)) { text = inText; }
         }
+
+        //Set a focus if there's a hard set one
+        if (character != Character.ANY) { focus = character; }
+
+        //Subscribe to a display event
+        GameData.instance.onDisplay += Display;
     }
 
-    void DisplayStat(Character character, Stats stat)
+    public void ChangeFocus(Character newFocus)
     {
-        switch (stat)
+        if (character == Character.ANY) { focus = newFocus; }
+    }
+
+    void Display(Character inCharacter, IGetStat statHolder)
+    {
+        //I might do something with "focuses" later
+        if (focus == inCharacter)
         {
-            case Stats.LVL: text.text = prefix + GameData.instance.GetStat(character, stat).ToString(); break;
+            //Sprite display
+            if (image != null)
+            {
+                if (stat == Stats.SPRITE) { image.sprite = statHolder.GetSprite(); }
+            }
+
+            //Text displays
+            if (text != null)
+            {
+                switch (stat)
+                {
+                    case Stats.NAME: text.text = statHolder.GetName(Stats.NAME); break;
+                    case Stats.LVL: text.text = "Lv. " + statHolder.GetStat(Stats.LVL); break;
+                    case Stats.JOB: text.text = statHolder.GetName(Stats.JOB); break;
+                    case Stats.JLV: text.text = statHolder.GetStat(Stats.JLV) > 0 ? statHolder.GetStat(Stats.JLV).ToString() : null; break;
+                    case Stats.HP:
+                        text.text = ((int)(statHolder.GetCompoundStat(Stats.HP).x * statHolder.GetCompoundStat(Stats.HP).y)).ToString() + "/" +
+                            (int)statHolder.GetCompoundStat(Stats.HP).y; break;
+                    case Stats.MP:
+                        text.text = ((int)(statHolder.GetCompoundStat(Stats.MP).x * statHolder.GetCompoundStat(Stats.MP).y)).ToString() + "/" +
+                            (int)statHolder.GetCompoundStat(Stats.MP).y; break;
+                    case Stats.AP: text.text = statHolder.GetStat(Stats.AP).ToString(); break;
+                }
+            }
         }
     }
 }
