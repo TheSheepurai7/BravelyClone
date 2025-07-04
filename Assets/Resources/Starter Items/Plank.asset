@@ -9,13 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a96d3a4ad07cbcf4381205c491ec933d, type: 3}
+  m_Script: {fileID: 11500000, guid: e55bf6aaa45fc914d8f4c98b5a58b153, type: 3}
   m_Name: Plank
   m_EditorClassIdentifier: 
+  tradeable: 0
+  price: 0
   equipType: 4
   pAtk: 0
-  pDef: 5
   mAtk: 0
+  pDef: 5
   mDef: 3
-  iNT: 0
   mND: 0
