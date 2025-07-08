@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,8 +14,10 @@ public partial class BattleManager : MonoBehaviour
     [SerializeField] Encounter[] encounters;
 
     //Cache
+    Text text;
     GameObject playerGFXTemplate;
     GameObject enemyGFXTemplate;
+    GameObject actionMenuTemplate;
     HorizontalLayoutGroup playerGroup;
     HorizontalLayoutGroup enemyGroup;
 
@@ -24,8 +27,10 @@ public partial class BattleManager : MonoBehaviour
     PlayerInfo[] players = new PlayerInfo[4];
 
     //Misc variables
-    ActionBuilder action;
     Encounter activeEncounter;
+    GameObject actionMenu;
+    ActionBuilder actionQueue;
+    List<string> messageQueue;
     bool ready = false;
 
     // Start is called before the first frame update
@@ -35,9 +40,13 @@ public partial class BattleManager : MonoBehaviour
         if (instance == null) { instance = this; }
         else { Destroy(this); }
 
-        //Cache templates if necessary
+        //Cache the display
+        text = GetComponent<Text>();
+
+        //Cache templates as necessary
         if (playerGFXTemplate == null) { playerGFXTemplate = Resources.Load<GameObject>("Prefabs/Player"); }
         if (enemyGFXTemplate == null) { enemyGFXTemplate = Resources.Load<GameObject>("Prefabs/Enemy"); }
+        if (actionMenuTemplate == null) { actionMenuTemplate = Resources.Load<GameObject>("Prefabs/ActionMenu"); }
         if (enemyGroup == null) { enemyGroup = transform.GetComponentsInChildren<HorizontalLayoutGroup>()[0]; }
         if (playerGroup == null) { playerGroup = transform.GetComponentsInChildren<HorizontalLayoutGroup>()[1]; }
 
@@ -49,7 +58,8 @@ public partial class BattleManager : MonoBehaviour
         activeEncounter = null;
         do
         {
-            int id = Random.Range(0, encounters.Length);
+            //int id = Random.Range(0, encounters.Length);
+            int id = UnityEngine.Random.Range(0, encounters.Length);
             if (avgLvl >= encounters[id].EncounterRating().x && avgLvl <= encounters[id].EncounterRating().y) { activeEncounter = encounters[id]; }
         } while (activeEncounter == null);
 
@@ -90,15 +100,28 @@ public partial class BattleManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (ready)
+        //Add to everyones' ATB gauge if a command isn't being built
+        if (ready && actionQueue == null)
         {
-            //I believe the loop I had was to first have an event that adds to everyones' ATB gauge
             float deltaTime = Time.deltaTime;
             foreach (CombatantInfo combatant in combatants) { combatant.aP += (int)(deltaTime * 1000); }
+        }
 
-            //Then I would process all the action requests (notably from the AIs that would check to see if there's anything they can do)
+        //If there are messages in the queue then display them
+        else if (messageQueue != null)
+        {
+            //Display the current message
+            text.text = messageQueue[0];
 
-            //Finally I update all the displays one last time
+            //Delete the current message if left click is pressed and nullify the messageQueue if there are no messages left
+            if (Input.GetMouseButton(0))
+            {
+                messageQueue.RemoveAt(0);
+                if (messageQueue.Count == 0) 
+                { 
+                    messageQueue = null;
+                }
+            }
         }
     }
 
@@ -119,7 +142,7 @@ public partial class BattleManager : MonoBehaviour
                 playerGFX.transform.SetParent(playerGroup.transform);
                 if (playerGFX.TryGetComponent(out CharacterDisplay display)) { display.AssignStatBlock(players[i]); }
                 int temp = i;
-                if (playerGFX.TryGetComponent(out Button button)) { button.onClick.AddListener(() => PlayerButton(players[temp])); } 
+                if (playerGFX.TryGetComponent(out Button button)) { button.onClick.AddListener(() => PlayerButton(players[temp])); }
             }
         }
         else { print("This component needs a second child with a horizontal layout group to hold the player graphics"); Destroy(this); }
@@ -135,9 +158,68 @@ public partial class BattleManager : MonoBehaviour
         ready = true;
     }
 
-    //Just check that the player buttons work
+    //I might just have this do something with a menu object
     void PlayerButton(CombatantInfo combatant)
     {
-        print("Accessed player button for " + combatant.name);
+        //This all only works if the action queue is empty
+        if (actionQueue == null)
+        {
+            //Open up a new action queue
+            actionQueue = new ActionBuilder(combatant);
+
+            //Create the action menu at the click point
+            actionMenu = Instantiate(actionMenuTemplate, transform);
+            if (actionMenu.TryGetComponent(out RectTransform rectTransform)) { rectTransform.anchoredPosition = Input.mousePosition; }
+
+            //Add job skills as necessary
+
+
+            //Attach handlers to the menu buttons (Create ones for job skills as necessary)
+            for (int i = 0; i < actionMenu.transform.childCount; i++)
+            {
+                //Attack
+                if (i == 0)
+                {
+                    //The Action Builder needs the delegate to be the combatant's Attack function
+                    actionMenu.GetComponentsInChildren<Button>()[i].onClick.AddListener(() => AssignActionDelegate(combatant, "Attack") );
+                }
+
+                //Job skills
+                else if (i == 1 && i < actionMenu.transform.childCount - 2)
+                {
+
+                }
+
+                //Sub-job skills
+                else if (i == 2 && i < actionMenu.transform.childCount - 2)
+                {
+
+                }
+
+                //Defend
+                else if (i == actionMenu.transform.childCount - 2)
+                {
+
+                }
+
+                //Item
+                else if (i == actionMenu.transform.childCount - 1)
+                {
+
+                }
+            }
+        }
+    }
+
+    //Perhaps I could have this return a targeting procedure
+    void AssignActionDelegate(CombatantInfo combatant, string action)
+    {
+        //This is where the delegate proper is assigned
+        print("Succeeded in assigning a delegate for " + action);
+        TargetTag targetTag = TargetTag.SELF;
+        if (actionQueue != null) { actionQueue.action = combatant.Command(action, ref targetTag); }
+        
+        //This is where I transition to targeting procedure
+
     }
 }
