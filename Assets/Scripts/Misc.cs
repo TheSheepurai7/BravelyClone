@@ -3,22 +3,40 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-//The miscellania
+//Misc delegates
 public delegate void UpdateStats(Stats stat);
-public delegate List<string> CombatAction(CombatantInfo source, List<CombatantInfo> targets); //Actually I want this to return a list of strings and print it out to the display
+public delegate List<string> CombatAction(CombatantInfo source, List<CombatantInfo> targets);
+
+//Misc enums
 public enum Character { ALEC, MARISA, JENNA, GARETH }
-public enum Stats { NAME, SPRITE, LVL, CHP, MHP, CMP, MMP, STR, PATK, VIT, PDEF, INT, MATK, MND, MDEF, AGI, JOB, JLV, AP }
+public enum Command { ATTACK, JOB, SUBJOB, DEFEND, ITEM }
 public enum EquipType { SWORD, STAFF, KNIFE, AXE, SHIELD, HEAD, BODY, ACCESSORY }
+public enum Job { NONE, KNIGHT, CLERIC, WIZARD, DRAGOON } //Add more later
+public enum Stats { NAME, SPRITE, LVL, CHP, MHP, CMP, MMP, STR, PATK, VIT, PDEF, INT, MATK, MND, MDEF, AGI, JOB, JLV, SJB, SJV, AP }
 public enum TargetTag { SINGLE, PARTY, ALL, SELF, ELSE, PARTY_ELSE, ALL_ELSE, FIELD }
 
+//Misc interfaces
 public interface IStatReader
 {
     public Sprite ReadImage();
     public string ReadString(Stats stat);
     public int ReadInt(Stats stat);
     public float ReadFloat(Stats stat);
+    public List<CommandInfo> ReadCommands(Stats stat);
     public void SubscribeDelegate(ref UpdateStats theDelegate);
 }
+
+//Misc structs
+public struct CommandInfo   
+{
+    public readonly string name;
+    public readonly TargetTag tag;
+    public readonly CombatAction action;
+    public CommandInfo(string name, TargetTag tag, CombatAction action) { this.name = name; this.tag = tag; this.action = action; }
+}
+
+//Misc classes
+
 
 public abstract class CombatantInfo : IStatReader
 {
@@ -80,27 +98,6 @@ public abstract class CombatantInfo : IStatReader
         aP = (int)(apMax * Mathf.Clamp(rank + UnityEngine.Random.Range(-0.1f, 0.1f), 0.1f, 0.9f));
     }
 
-    public CombatAction Command(string commandName, ref TargetTag targetTag)
-    {
-        switch(commandName)
-        {
-            case "Attack": targetTag = TargetTag.SINGLE; return Attack;
-            case "Defend": targetTag = TargetTag.SELF; return Defend;
-            default: throw new Exception(commandName + " is not a command that " + name + " possesses");
-        }
-    }
-
-    //General commands
-    List<string> Attack(CombatantInfo source, List<CombatantInfo> targets)
-    {
-        return new List<string> { "This is just a placeholder for Attack for now" };
-    }
-
-    List<string> Defend(CombatantInfo source, List<CombatantInfo> targets)
-    {
-        return new List<string> { "This is just a placeholder for Defend for now" };
-    }
-
     //Interface functions
     public Sprite ReadImage()
     {
@@ -129,6 +126,8 @@ public abstract class CombatantInfo : IStatReader
         }
     }
 
+    public abstract List<CommandInfo> ReadCommands(Stats stat);
+
     public float ReadFloat(Stats stat)
     {
         switch (stat)
@@ -141,5 +140,13 @@ public abstract class CombatantInfo : IStatReader
     public void SubscribeDelegate(ref UpdateStats theDelegate)
     {
         onUpdate += theDelegate;
+    }
+}
+
+public static class Knight
+{
+    public static List<CommandInfo> ReturnCommands(int level)
+    {
+        return new List<CommandInfo>();
     }
 }

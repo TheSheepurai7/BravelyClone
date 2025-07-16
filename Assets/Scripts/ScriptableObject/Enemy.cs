@@ -56,6 +56,11 @@ public class Enemy : ScriptableObject, IStatReader
         throw new System.Exception(stat + " cannot be parsed as a float in Enemy (Or the functionality hasn't been implemented yet).");
     }
 
+    public List<CommandInfo> ReadCommands(Stats stat)
+    {
+        throw new System.Exception(stat + " cannot be parsed as a command list in Enemy (Or the functionality hasn't been implemented yet).");
+    }
+
     public void SubscribeDelegate(ref UpdateStats theDelegate)
     {
 

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 
 public partial class GameData
@@ -14,7 +15,9 @@ public partial class GameData
         float[] statMultipliers; // For use later
         int currentHP;
         int currentMP;
-        JobInfo actingJob = null;
+        Dictionary<Job, int> jobPool;
+        Job actingJob;
+        Job actingSubJob;
         Equipment[] equipment;
 
         public CharacterData(Sprite sprite, string name, int[] baseStats, Equipment[] equipment)
@@ -25,6 +28,10 @@ public partial class GameData
             this.equipment = equipment;
             currentHP = baseStats[0];
             currentMP = baseStats[1];
+            jobPool = new Dictionary<Job, int>();
+            jobPool.Add(Job.NONE, 0);
+            actingJob = Job.NONE;
+            actingSubJob = Job.NONE;
         }
 
         public Sprite ReadImage()
@@ -37,7 +44,7 @@ public partial class GameData
             switch (stat)
             {
                 case Stats.NAME: return name;
-                case Stats.JOB: if (actingJob != null) { return actingJob.name; } return "None";
+                case Stats.JOB: return actingJob.ToString();
                 default: throw new System.Exception(stat + " cannot be parsed as a name in CharacterData (Or the functionality hasn't been implemented yet).");
             }
         }
@@ -62,9 +69,19 @@ public partial class GameData
             }
         }
 
-        public float ReadFloat(Stats stat) 
-        { 
+        public float ReadFloat(Stats stat)
+        {
             throw new System.Exception(stat + " cannot be parsed as a float in CharacterData (Or the functionality hasn't been implemented yet).");
+        }
+
+        public List<CommandInfo> ReadCommands(Stats stat)
+        {
+            switch (stat)
+            {
+                case Stats.JOB: return GetJobCommands(actingJob);
+                case Stats.SJB: return GetJobCommands(actingSubJob);
+                default: throw new System.Exception(stat + " cannot be parsed as a command list in CharacterData (Or the functionality hasn't been implemented yet).");
+            }
         }
 
         int EquipStat(Stats stat)
@@ -75,21 +92,18 @@ public partial class GameData
             return returnValue;
         }
 
+        List<CommandInfo> GetJobCommands(Job job)
+        {
+            switch(job)
+            {
+                case Job.NONE: return null;
+                default: throw new System.Exception(job + " does not have a corrosponding static class.");
+            }
+        }
+
         public void SubscribeDelegate(ref UpdateStats theDelegate)
         {
             
-        }
-    }
-
-    class JobInfo
-    {
-        public string name { get; protected set; }
-        public int lvl { get; private set; }
-
-        public JobInfo()
-        {
-            //At the very least the job level should be set to 1 by default
-            lvl = 1;
         }
     }
 }

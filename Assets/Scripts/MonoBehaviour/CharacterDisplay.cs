@@ -15,7 +15,6 @@ public class CharacterDisplay : MonoBehaviour
     //The stat block to read from (Really these two fields are only used for updates)
     IStatReader statBlock;
     Dictionary<Stats, List<GameObject>> displayDictionary = new Dictionary<Stats, List<GameObject>>();
-
     void Awake()
     {
         //Reset everything for simplicity's sake
@@ -152,7 +151,9 @@ public class CharacterDisplay : MonoBehaviour
         }
     }
 
-    public void UpdateColors(Image apMeter, Image apBack)
+    public CombatantInfo ExtractCombatant() { return (CombatantInfo)statBlock; }
+
+    void UpdateColors(Image apMeter, Image apBack)
     {
         switch(statBlock.ReadInt(Stats.AP))
         {

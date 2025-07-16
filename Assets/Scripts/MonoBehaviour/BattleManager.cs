@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public partial class BattleManager : MonoBehaviour
@@ -12,12 +13,12 @@ public partial class BattleManager : MonoBehaviour
 
     //Inspector variables
     [SerializeField] Encounter[] encounters;
+    [SerializeField] GameObject actionMenu;
 
     //Cache
     Text text;
     GameObject playerGFXTemplate;
     GameObject enemyGFXTemplate;
-    GameObject actionMenuTemplate;
     HorizontalLayoutGroup playerGroup;
     HorizontalLayoutGroup enemyGroup;
 
@@ -26,11 +27,12 @@ public partial class BattleManager : MonoBehaviour
     EnemyInfo[] enemies;
     PlayerInfo[] players = new PlayerInfo[4];
 
+    //Public fields
+    public ActionBuilder actionQueue;
+    List<String> messageQueue;
+
     //Misc variables
     Encounter activeEncounter;
-    GameObject actionMenu;
-    ActionBuilder actionQueue;
-    List<string> messageQueue;
     bool ready = false;
 
     // Start is called before the first frame update
@@ -46,9 +48,11 @@ public partial class BattleManager : MonoBehaviour
         //Cache templates as necessary
         if (playerGFXTemplate == null) { playerGFXTemplate = Resources.Load<GameObject>("Prefabs/Player"); }
         if (enemyGFXTemplate == null) { enemyGFXTemplate = Resources.Load<GameObject>("Prefabs/Enemy"); }
-        if (actionMenuTemplate == null) { actionMenuTemplate = Resources.Load<GameObject>("Prefabs/ActionMenu"); }
         if (enemyGroup == null) { enemyGroup = transform.GetComponentsInChildren<HorizontalLayoutGroup>()[0]; }
         if (playerGroup == null) { playerGroup = transform.GetComponentsInChildren<HorizontalLayoutGroup>()[1]; }
+
+        //Ensure the actionMenu is off
+        actionMenu.SetActive(false);
 
         //First I need to calculate the average level of all party members
         int avgLvl = (GameData.instance.GetCharacter(Character.ALEC).ReadInt(Stats.LVL) + GameData.instance.GetCharacter(Character.MARISA).ReadInt(Stats.LVL) +
@@ -101,26 +105,31 @@ public partial class BattleManager : MonoBehaviour
     void Update()
     {
         //Add to everyones' ATB gauge if a command isn't being built
-        if (ready && actionQueue == null)
+        if (ready && actionQueue == null && messageQueue == null)
         {
+            if (!EventSystem.current.currentInputModule.IsActive()) { EventSystem.current.currentInputModule.ActivateModule(); }
             float deltaTime = Time.deltaTime;
             foreach (CombatantInfo combatant in combatants) { combatant.aP += (int)(deltaTime * 1000); }
         }
 
+        //Otherwise check the action queue for actions that can be processed and process them
+        else if (actionQueue != null && messageQueue == null)
+        {
+            //This SHOULD be a concat, but that's not working so let's make sure just directly assigning it works
+            if (actionQueue.Complete()) { messageQueue = actionQueue.RunAction(); actionQueue = null; }
+        }
+
         //If there are messages in the queue then display them
+        //This is done in a very weird way to make sure it doesn't simultaneously register button presses. It works for now, but might need to be scaled up later
         else if (messageQueue != null)
         {
-            //Display the current message
-            text.text = messageQueue[0];
+            if (messageQueue.Count > 0) { text.text = messageQueue[0]; }
+            else { text.text = string.Empty; messageQueue = null; }
 
-            //Delete the current message if left click is pressed and nullify the messageQueue if there are no messages left
-            if (Input.GetMouseButton(0))
+            if (Input.GetMouseButtonDown(0))
             {
+                EventSystem.current.currentInputModule.DeactivateModule();
                 messageQueue.RemoveAt(0);
-                if (messageQueue.Count == 0) 
-                { 
-                    messageQueue = null;
-                }
             }
         }
     }
@@ -142,7 +151,7 @@ public partial class BattleManager : MonoBehaviour
                 playerGFX.transform.SetParent(playerGroup.transform);
                 if (playerGFX.TryGetComponent(out CharacterDisplay display)) { display.AssignStatBlock(players[i]); }
                 int temp = i;
-                if (playerGFX.TryGetComponent(out Button button)) { button.onClick.AddListener(() => PlayerButton(players[temp])); }
+                if (playerGFX.TryGetComponent(out Button button)) { button.onClick.AddListener(() => OpenActionMenu(players[temp])); }
             }
         }
         else { print("This component needs a second child with a horizontal layout group to hold the player graphics"); Destroy(this); }
@@ -158,68 +167,25 @@ public partial class BattleManager : MonoBehaviour
         ready = true;
     }
 
-    //I might just have this do something with a menu object
-    void PlayerButton(CombatantInfo combatant)
+    void OpenActionMenu(PlayerInfo player)
     {
-        //This all only works if the action queue is empty
-        if (actionQueue == null)
+        //None of this works if action menu doesn't even have an action menu component
+        if (actionMenu.TryGetComponent(out ActionMenu amComponent))
         {
-            //Open up a new action queue
-            actionQueue = new ActionBuilder(combatant);
-
-            //Create the action menu at the click point
-            actionMenu = Instantiate(actionMenuTemplate, transform);
-            if (actionMenu.TryGetComponent(out RectTransform rectTransform)) { rectTransform.anchoredPosition = Input.mousePosition; }
-
-            //Add job skills as necessary
-
-
-            //Attach handlers to the menu buttons (Create ones for job skills as necessary)
-            for (int i = 0; i < actionMenu.transform.childCount; i++)
+            //None of this works if there's already an action being built (but won't throw an exception if the queue isn't empty)
+            if (actionQueue == null && messageQueue == null)
             {
-                //Attack
-                if (i == 0)
-                {
-                    //The Action Builder needs the delegate to be the combatant's Attack function
-                    actionMenu.GetComponentsInChildren<Button>()[i].onClick.AddListener(() => AssignActionDelegate(combatant, "Attack") );
-                }
+                //Activate the action menu at the spot clicked
+                actionMenu.SetActive(true);
+                actionMenu.GetComponent<RectTransform>().anchoredPosition = Input.mousePosition;
 
-                //Job skills
-                else if (i == 1 && i < actionMenu.transform.childCount - 2)
-                {
+                //Open a new ticket in the action queue
+                actionQueue = new ActionBuilder(player);
 
-                }
-
-                //Sub-job skills
-                else if (i == 2 && i < actionMenu.transform.childCount - 2)
-                {
-
-                }
-
-                //Defend
-                else if (i == actionMenu.transform.childCount - 2)
-                {
-
-                }
-
-                //Item
-                else if (i == actionMenu.transform.childCount - 1)
-                {
-
-                }
+                //This is where I would pass functions to make the action menu work
+                amComponent.PopulateMenu(player);
             }
         }
-    }
-
-    //Perhaps I could have this return a targeting procedure
-    void AssignActionDelegate(CombatantInfo combatant, string action)
-    {
-        //This is where the delegate proper is assigned
-        print("Succeeded in assigning a delegate for " + action);
-        TargetTag targetTag = TargetTag.SELF;
-        if (actionQueue != null) { actionQueue.action = combatant.Command(action, ref targetTag); }
-        
-        //This is where I transition to targeting procedure
-
+        else { throw new Exception("Action menu needs an action menu component otherwise why are you calling it an action menu?"); }
     }
 }

@@ -39,8 +39,8 @@ public class UIElements : MonoBehaviour
         transform.GetChild(1).gameObject.SetActive(false);
     }
 
-    public void StartBattle()
+    public void ButtonTest()
     {
-
+        print("Button works");
     }
 }
