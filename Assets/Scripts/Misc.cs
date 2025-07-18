@@ -5,7 +5,7 @@ using UnityEngine;
 
 //Misc delegates
 public delegate void UpdateStats(Stats stat);
-public delegate List<string> CombatAction(CombatantInfo source, List<CombatantInfo> targets);
+public delegate string CombatAction(CombatantInfo source, List<CombatantInfo> targets);
 
 //Misc enums
 public enum Character { ALEC, MARISA, JENNA, GARETH }
@@ -23,7 +23,7 @@ public interface IStatReader
     public int ReadInt(Stats stat);
     public float ReadFloat(Stats stat);
     public List<CommandInfo> ReadCommands(Stats stat);
-    public void SubscribeDelegate(ref UpdateStats theDelegate);
+    public void UpdateDisplay(ref UpdateStats theDelegate);
 }
 
 //Misc structs
@@ -60,12 +60,16 @@ public abstract class CombatantInfo : IStatReader
     protected int maxHP;
     protected int maxMP;
     protected int bonusMax;
+    protected bool active = true;
 
     //Properties
     private int _aP;
     public int aP { get { return _aP; } set { _aP = Mathf.Clamp(value, 0, apMax * 4); onUpdate?.Invoke(Stats.AP); } }
+
     private int _currentHP;
-    public int currentHP { get { return _currentHP; } set { _currentHP = Mathf.Clamp(value, 0, maxHP + bonusMax); onUpdate?.Invoke(Stats.CHP); } }
+    public int currentHP { get { return _currentHP; } set { _currentHP = Mathf.Clamp(value, 0, maxHP + bonusMax); onUpdate?.Invoke(Stats.CHP); 
+            if (_currentHP == 0) { OnDeath(); } } }
+
     private int _currentMP;
     public int currentMP { get { return _currentMP; } set { _currentMP = Mathf.Clamp(value, 0, maxMP); onUpdate?.Invoke(Stats.CMP); } }
 
@@ -113,18 +117,8 @@ public abstract class CombatantInfo : IStatReader
         }
     }
 
-    public int ReadInt(Stats stat)
-    {
-        switch (stat)
-        {
-            case Stats.CHP: return currentHP;
-            case Stats.MHP: return maxHP;
-            case Stats.CMP: return currentMP;
-            case Stats.MMP: return maxMP;
-            case Stats.AP: return aP / apMax;
-            default: throw new System.Exception(stat + " cannot be parsed as an int in CombatantInfo (Or the functionality hasn't been implemented yet).");
-        }
-    }
+    //Should I abstract this?
+    public abstract int ReadInt(Stats stat);
 
     public abstract List<CommandInfo> ReadCommands(Stats stat);
 
@@ -137,9 +131,15 @@ public abstract class CombatantInfo : IStatReader
         }
     }
 
-    public void SubscribeDelegate(ref UpdateStats theDelegate)
+    public void UpdateDisplay(ref UpdateStats theDelegate)
     {
         onUpdate += theDelegate;
+    }
+
+    //Virtual functions
+    protected virtual void OnDeath()
+    {
+
     }
 }
 

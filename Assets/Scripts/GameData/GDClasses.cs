@@ -101,7 +101,7 @@ public partial class GameData
             }
         }
 
-        public void SubscribeDelegate(ref UpdateStats theDelegate)
+        public void UpdateDisplay(ref UpdateStats theDelegate)
         {
             
         }

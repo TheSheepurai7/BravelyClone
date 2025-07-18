@@ -8,18 +8,14 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Image))]
 public class ActionMenu : MonoBehaviour
 {
-    //I might want to try making an event to signal to the BattleManager to pick up the CombatAction and targets to integrate into the ActionBuilder
+    //Return values
     CombatAction currentAction;
     List<CombatantInfo> currentTargets;
 
-    //StatBlock from which to execute common commands
-    IStatReader statBlock;
-
-    //Button template
+    //Misc variables
     GameObject buttonTemplate;
 
-    //I should at least use awake to wipe events
-    void Awake()
+    private void Awake()
     {
         //Reawaken the image just in case
         GetComponent<Image>().enabled = true;
@@ -34,11 +30,7 @@ public class ActionMenu : MonoBehaviour
     //Public functions
     public void PopulateMenu(IStatReader statBlock)
     {
-        //Store the stat block for when the commands are needed
-        this.statBlock = statBlock;
-
-        //Populate the command list
-        int commandsAvailable = 3 + Convert.ToInt32(statBlock.ReadCommands(Stats.JOB) != null) + Convert.ToInt32(statBlock.ReadCommands(Stats.SJB) != null);
+        int commandsAvailable = 1 + Convert.ToInt32(statBlock.ReadCommands(Stats.JOB) != null) + Convert.ToInt32(statBlock.ReadCommands(Stats.SJB) != null);
         for (int i = 0; i < commandsAvailable; i++)
         {
             //Instantiate a new button and attach it to the action menu
@@ -46,10 +38,7 @@ public class ActionMenu : MonoBehaviour
 
             //Rename the button and assign it functionality based on order
             if (i == 0) { CreateCommandButton(ref button, new CommandInfo("Attack", TargetTag.SINGLE, Attack), false); } //Attack
-            else if (i == 1 && i < commandsAvailable - 2) { } //Job command
-            else if (i == 2 && i < commandsAvailable - 2) { } //SubJob command
-            else if (i == commandsAvailable - 2) { CreateCommandButton(ref button, new CommandInfo("Defend", TargetTag.SELF, Defend), false); } //Defend
-            else if (i == commandsAvailable - 1) { CreateCommandButton(ref button, new CommandInfo("Item", TargetTag.SINGLE, Item), false); } //Item (Delegate to sub-menu later)
+            //Item creates a sub-menu and I need a different function for that entirely
         }
     }
 
@@ -69,7 +58,6 @@ public class ActionMenu : MonoBehaviour
         else { throw new Exception("Button template needs a button component otherwise why are you calling it a button?"); }
     }
 
-    //I should make this the coroutine and see if that works
     IEnumerator SelectTarget(CommandInfo info)
     {
         //I need to hide the menu first and foremost
@@ -80,46 +68,61 @@ public class ActionMenu : MonoBehaviour
         currentAction = info.action;
 
         //Preselect targets for target tags that require such a thing and simply wait for confirmation (Self, All, AllElse, and Field)
+        if (info.tag == TargetTag.SELF || info.tag == TargetTag.ALL || info.tag == TargetTag.ALL_ELSE || info.tag == TargetTag.FIELD)
+        {
+            print("For the time being the functionality for confirmation tags hasn't been implemented, so have fun with this infinite loop");
+            while (true)
+            {
+                yield return null;
+            }
+        }
 
         //Otherwise poll for a target
-        PointerEventData pointer = new PointerEventData(EventSystem.current);
-        List<RaycastResult> results = new List<RaycastResult>();
-        TargetTag proxyTag = info.tag; //Really only for use with the variable tag
-        while (currentTargets == null)
+        else
         {
-            //Get raycast data
-            pointer.position = Input.mousePosition;
-            ClearResults(ref results);
-            results = new List<RaycastResult>();
-            EventSystem.current.RaycastAll(pointer, results);
-
-            //Process events based on target tag (if there are targets to process)
-            if (results.Count > 0)
+            Image buffer = null;
+            PointerEventData pointer = new PointerEventData(EventSystem.current); //Keep an eye on this for clearing the event buffer on ATB return
+            TargetTag proxyTag = info.tag; //Really only for use with the variable tag
+            while (currentTargets == null)
             {
-                switch (proxyTag)
+                //Clear buffer
+                if (buffer != null) { buffer.color *= new Vector4(1, 1, 1, 0); buffer = null; }
+
+                //Get raycast data
+                pointer.position = Input.mousePosition;
+                List<RaycastResult> results = new List<RaycastResult>();
+                EventSystem.current.RaycastAll(pointer, results);
+
+                //Process events based on target tag (if there are targets to process)
+                if (results.Count > 0)
                 {
-                    case TargetTag.SINGLE:
-                        //Hover procedure
-                        if (results[0].gameObject.TryGetComponent(out Image image)) { image.color += (Color)new Vector4(0, 0, 0, 1); }
+                    switch (proxyTag)
+                    {
+                        case TargetTag.SINGLE:
+                            //Hover procedure
+                            if (results[0].gameObject.TryGetComponent(out Image image)) { buffer = image; image.color += (Color)new Vector4(0, 0, 0, 1); }
 
-                        //Click procedure
-                        if (Input.GetMouseButtonDown(0) && results[0].gameObject.TryGetComponent(out CharacterDisplay cd))
-                        { currentTargets = new List<CombatantInfo>() { cd.ExtractCombatant() }; ClearResults(ref results); }
-                        break;
+                            //Click procedure
+                            if (Input.GetMouseButtonDown(0) && results[0].gameObject.TryGetComponent(out CharacterDisplay display))
+                            { if (display.ExtractCombatant(out CombatantInfo combatant)) { currentTargets = new List<CombatantInfo> { combatant }; } }
 
-                    default: throw new Exception("Support for " + proxyTag + " targeting has not been implemented yet");
+                            break;
+                    }
                 }
+
+                //Change the proxy tag if the default is variable
+
+                //Wait until next frame
+                yield return null;
             }
 
-            //Change the proxy tag if the default tag is variable
-
-            //Wait until next frame
-            yield return null;
+            //Clear the buffer one last time
+            if (buffer != null) { buffer.color *= new Vector4(1, 1, 1, 0); buffer = null; }
         }
 
         //Ship off the delegate and targets to the Battle Manager
-        BattleManager.instance.actionQueue.action = currentAction;
-        BattleManager.instance.actionQueue.targets = currentTargets;
+        BattleManager.instance.actionQueue[0].action = currentAction;
+        BattleManager.instance.actionQueue[0].targets = currentTargets;
 
         //Delete all buttons
         foreach (Transform child in transform) { Destroy(child.gameObject); }
@@ -130,28 +133,11 @@ public class ActionMenu : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    void ClearResults(ref List<RaycastResult> results)
-    {
-        //All of the images detected by the previous cast have their opacity reset to zero
-        foreach(RaycastResult result in results) { if (result.gameObject.TryGetComponent(out Image image)) { image.color *= new Vector4(1, 1, 1, 0); } }
-
-        //It's a fresh list
-        results = new List<RaycastResult>();
-    }
-
     //Universal commands
-    List<string> Attack(CombatantInfo source, List<CombatantInfo> targets)
+    string Attack(CombatantInfo source, List<CombatantInfo> targets)
     {
-        return new List<string> { "I have confirmed the attack was successful. Now to confirm the timer starts after this message disappears" };
-    }
-
-    List<string> Defend(CombatantInfo source, List<CombatantInfo> targets)
-    {
-        return null;
-    }
-
-    List<string> Item(CombatantInfo source, List<CombatantInfo> targets)
-    {
-        return null;
+        int damage = (int)((source.ReadInt(Stats.PATK) - targets[0].ReadInt(Stats.PDEF)) * (1 + (source.ReadInt(Stats.LVL) / 4)) * UnityEngine.Random.Range(0.8f, 1));
+        targets[0].currentHP -= damage;
+        return source.name + " attacked " + targets[0].name + " and dealt " + damage.ToString() + " damage.";
     }
 }

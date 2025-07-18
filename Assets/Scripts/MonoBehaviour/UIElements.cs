@@ -22,9 +22,16 @@ public class UIElements : MonoBehaviour
         //Activate main screen
         transform.GetChild(1).gameObject.SetActive(true);
 
-        //Run through each character and activate their character displays
+        //Run through each character
         for (int i = 0; i < transform.GetChild(1).GetComponentsInChildren<CharacterDisplay>().Length; i++)
-        { transform.GetChild(1).GetComponentsInChildren<CharacterDisplay>()[i].AssignStatBlock(GameData.instance.GetCharacter((Character)i)); }
+        {
+            //Assign stat block
+            transform.GetChild(1).GetComponentsInChildren<CharacterDisplay>()[i].AssignStatBlock(GameData.instance.GetCharacter((Character)i));
+
+            //Assign delegate
+            int temp = i;
+            transform.GetChild(1).GetComponentsInChildren<CharacterDisplay>()[i].SubscribeLeftClick(() => ThatPersonsNameIs(GameData.instance.GetCharacter((Character)temp)));
+        }
 
         //Turn off the load screen
         transform.GetChild(0).gameObject.SetActive(false);
@@ -39,8 +46,8 @@ public class UIElements : MonoBehaviour
         transform.GetChild(1).gameObject.SetActive(false);
     }
 
-    public void ButtonTest()
+    void ThatPersonsNameIs(IStatReader statBlock)
     {
-        print("Button works");
+        print("That person's name is " + statBlock.ReadString(Stats.NAME));
     }
 }

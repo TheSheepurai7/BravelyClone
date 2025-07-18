@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -27,9 +25,9 @@ public partial class BattleManager : MonoBehaviour
     EnemyInfo[] enemies;
     PlayerInfo[] players = new PlayerInfo[4];
 
-    //Public fields
-    public ActionBuilder actionQueue;
-    List<String> messageQueue;
+    //Queues
+    public List<ActionBuilder> actionQueue { get; private set; }
+    string message;
 
     //Misc variables
     Encounter activeEncounter;
@@ -104,32 +102,44 @@ public partial class BattleManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //Add to everyones' ATB gauge if a command isn't being built
-        if (ready && actionQueue == null && messageQueue == null)
+        if (ready)
         {
-            if (!EventSystem.current.currentInputModule.IsActive()) { EventSystem.current.currentInputModule.ActivateModule(); }
-            float deltaTime = Time.deltaTime;
-            foreach (CombatantInfo combatant in combatants) { combatant.aP += (int)(deltaTime * 1000); }
-        }
-
-        //Otherwise check the action queue for actions that can be processed and process them
-        else if (actionQueue != null && messageQueue == null)
-        {
-            //This SHOULD be a concat, but that's not working so let's make sure just directly assigning it works
-            if (actionQueue.Complete()) { messageQueue = actionQueue.RunAction(); actionQueue = null; }
-        }
-
-        //If there are messages in the queue then display them
-        //This is done in a very weird way to make sure it doesn't simultaneously register button presses. It works for now, but might need to be scaled up later
-        else if (messageQueue != null)
-        {
-            if (messageQueue.Count > 0) { text.text = messageQueue[0]; }
-            else { text.text = string.Empty; messageQueue = null; }
-
-            if (Input.GetMouseButtonDown(0))
+            //Run actions and display messages if there are such things to do and show
+            if (actionQueue != null || message != null)
             {
-                EventSystem.current.currentInputModule.DeactivateModule();
-                messageQueue.RemoveAt(0);
+                //Process actions
+                if (actionQueue != null)
+                {
+                    if (actionQueue[0].Complete() && message == null)
+                    {
+                        message = actionQueue[0].RunAction();
+                        actionQueue.RemoveAt(0);
+                        if (actionQueue.Count == 0) { actionQueue = null; }
+                    }
+                }
+
+                //Display messages
+                if (message != null)
+                {
+                    text.text = message;
+
+                    //Erase message on button down
+                    if (Input.GetMouseButtonDown(0))
+                    {
+                        //Erase the message (and presumably start the timer back up again
+                        text.text = string.Empty;
+                        message = null;
+
+                        //Nullify any pointer down events
+                        EventSystem.current.currentInputModule.DeactivateModule();
+                    }
+                }
+            }
+
+            //Otherwise increment everyones' ATB counters
+            else
+            {
+
             }
         }
     }
@@ -137,21 +147,25 @@ public partial class BattleManager : MonoBehaviour
     //Here is where I put the functionality of the READY button
     public void Ready()
     {
-        //I need to create CombatInfo structs out of each CharacterData
         if (playerGroup != null)
         {
+            //I need to create CombatInfo structs out of each CharacterData
             for (int i = 0; i < 4; i++)
             {
                 //Create the PlayerInfo
                 players[i] = new PlayerInfo(GameData.instance.GetCharacter((Character)i), GameData.instance.GetCharacter((Character)i).ReadString(Stats.NAME));
                 combatants.Add(players[i]);
 
-                //Create the EnemyGFX for the EnemyInfo
+                //Create the PlayerGFX for the PlayerInfo
                 GameObject playerGFX = Instantiate(playerGFXTemplate);
                 playerGFX.transform.SetParent(playerGroup.transform);
-                if (playerGFX.TryGetComponent(out CharacterDisplay display)) { display.AssignStatBlock(players[i]); }
                 int temp = i;
-                if (playerGFX.TryGetComponent(out Button button)) { button.onClick.AddListener(() => OpenActionMenu(players[temp])); }
+                if (playerGFX.TryGetComponent(out CharacterDisplay display))
+                {
+                    display.AssignStatBlock(players[i]);
+                    display.SubscribeLeftClick(() => OpenActionMenu(players[temp]));
+                }
+                else { throw new Exception("PlayerGFX needs a CharacterDisplay component to work"); }
             }
         }
         else { print("This component needs a second child with a horizontal layout group to hold the player graphics"); Destroy(this); }
@@ -167,25 +181,39 @@ public partial class BattleManager : MonoBehaviour
         ready = true;
     }
 
-    void OpenActionMenu(PlayerInfo player)
+    //I think I need functions that can be passed onto the button at setup so that it can be invoked when clicked to either defend or open the action menu
+    void OpenActionMenu(PlayerInfo playerInfo)
     {
         //None of this works if action menu doesn't even have an action menu component
         if (actionMenu.TryGetComponent(out ActionMenu amComponent))
         {
-            //None of this works if there's already an action being built (but won't throw an exception if the queue isn't empty)
-            if (actionQueue == null && messageQueue == null)
+            //None of this works if there's already an action being built or a message displayed (but won't throw an exception if the queue isn't empty)
+            if (actionQueue == null && message == null)
             {
                 //Activate the action menu at the spot clicked
                 actionMenu.SetActive(true);
                 actionMenu.GetComponent<RectTransform>().anchoredPosition = Input.mousePosition;
 
                 //Open a new ticket in the action queue
-                actionQueue = new ActionBuilder(player);
+                actionQueue = new List<ActionBuilder> { new ActionBuilder(playerInfo) };
 
                 //This is where I would pass functions to make the action menu work
-                amComponent.PopulateMenu(player);
+                amComponent.PopulateMenu(playerInfo);
             }
         }
         else { throw new Exception("Action menu needs an action menu component otherwise why are you calling it an action menu?"); }
+    }
+
+    void RemoveEnemy(EnemyInfo enemy)
+    {
+        //Remove the enemy
+        foreach (Transform child in enemyGroup.transform)
+        {
+            if (child.TryGetComponent(out CharacterDisplay display) && display.ExtractCombatant(out CombatantInfo combatant) && enemy.Equals(combatant))
+            { child.gameObject.SetActive(false); break; }
+        }
+
+        //Check to see if the win condition is met
+
     }
 }

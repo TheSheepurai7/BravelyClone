@@ -1,9 +1,11 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class CharacterDisplay : MonoBehaviour
+public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
 {
     //Color constants
     Color AP_ZERO = new Color32(120, 0, 0, 255);
@@ -12,9 +14,14 @@ public class CharacterDisplay : MonoBehaviour
     Color AP_THREE = new Color32(255, 150, 0, 255);
     Color AP_MAX = new Color32(255, 0, 255, 255);
 
-    //The stat block to read from (Really these two fields are only used for updates)
+    //The stat block to read from
     IStatReader statBlock;
-    Dictionary<Stats, List<GameObject>> displayDictionary = new Dictionary<Stats, List<GameObject>>();
+    Dictionary<Stats, List<GameObject>> displayDictionary = new Dictionary<Stats, List<GameObject>>(); //I may not need this, so I might delete it later
+
+    //Mouse events
+    event Action onLeftClick;
+    event Action onRightClick;
+
     void Awake()
     {
         //Reset everything for simplicity's sake
@@ -27,7 +34,6 @@ public class CharacterDisplay : MonoBehaviour
         this.statBlock = statBlock;
 
         //Display every stat possible. Just scattershot it. This is really only meant to be called once during the screen transition
-        //While I'm at it, I might be able to set up a dictionary using a stat as a key and a list of objects associated with it as the value for easy recall
         foreach (Transform display in GetComponentsInChildren<Transform>())
         {
             //I guess I can switch tags
@@ -123,7 +129,7 @@ public class CharacterDisplay : MonoBehaviour
         //Pass on an UpdateStat delegate to what ever event the stat reader wants to use for displays
         //If I go the dictionary route, the function should see if the dictionary has that stat to display then cycle through the list of objects associated with that stat
         UpdateStats updateStat = UpdateStat;
-        statBlock.SubscribeDelegate(ref updateStat);
+        statBlock.UpdateDisplay(ref updateStat);
     }
 
     public void UpdateStat(Stats stat)
@@ -151,11 +157,15 @@ public class CharacterDisplay : MonoBehaviour
         }
     }
 
-    public CombatantInfo ExtractCombatant() { return (CombatantInfo)statBlock; }
+    public bool ExtractCombatant(out CombatantInfo combatant)
+    {
+        try { combatant = (CombatantInfo)statBlock; return true; } 
+        catch { combatant = null; return false; }
+    }
 
     void UpdateColors(Image apMeter, Image apBack)
     {
-        switch(statBlock.ReadInt(Stats.AP))
+        switch (statBlock.ReadInt(Stats.AP))
         {
             case 0:
                 apMeter.color = AP_ONE; apBack.color = AP_ZERO;
@@ -174,4 +184,15 @@ public class CharacterDisplay : MonoBehaviour
                 break;
         }
     }
+
+    //Click event stuff
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Left) { onLeftClick?.Invoke(); }
+        else if (eventData.button == PointerEventData.InputButton.Right) { onRightClick?.Invoke(); }
+    }
+
+    //Delegate subscriptions
+    public void SubscribeLeftClick(Action theDelegate) { onLeftClick += theDelegate; }
+    public void SubscribeRightClick(Action theDelegate) { onRightClick += theDelegate; }
 }
