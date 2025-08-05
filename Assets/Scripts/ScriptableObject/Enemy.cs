@@ -1,4 +1,4 @@
-using System.Collections;
+using System.Buffers;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,49 +20,41 @@ public class Enemy : ScriptableObject, IStatReader
     [SerializeField] int xP;
     [SerializeField] int pG;
 
+    public List<CommandInfo> ReadCommands(Stats stat)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public float ReadFloat(Stats stat)
+    {
+        throw new System.NotImplementedException("Float not parsed");
+    }
+
     public Sprite ReadImage()
     {
         return sprite;
     }
 
-    public string ReadString(Stats stat)
-    {
-        switch (stat)
-        {
-            case Stats.NAME: return name;
-            default: throw new System.Exception(stat + " cannot be parsed as a name in Enemy (Or the functionality hasn't been implemented yet).");
-        }
-    }
-
     public int ReadInt(Stats stat)
     {
-        switch (stat)
+        switch (stat) 
         {
-            case Stats.PATK: return pAtk;
-            case Stats.MATK: return mAtk;
-            case Stats.INT: return iNT;
-            case Stats.PDEF: return pDef;
-            case Stats.MDEF: return mDef;
-            case Stats.MND: return mND;
-            case Stats.AGI: return sPD;
             case Stats.MHP: return hP;
             case Stats.MMP: return mP;
-            default: throw new System.Exception(stat + " cannot be parsed as an int in Enemy (Or the functionality hasn't been implemented yet).");
+            case Stats.PATK: return pAtk;
+            case Stats.PDEF: return pDef;
+            case Stats.AGI: return sPD;
+            default: throw new System.Exception(stat + " could not be parsed as an int in Enemy");
         }
     }
 
-    public float ReadFloat(Stats stat)
+    public string ReadString(Stats stat)
     {
-        throw new System.Exception(stat + " cannot be parsed as a float in Enemy (Or the functionality hasn't been implemented yet).");
+        throw new System.NotImplementedException("String not parsed");
     }
 
-    public List<CommandInfo> ReadCommands(Stats stat)
+    public void UpdateDisplay(ref CharacterDisplay display)
     {
-        throw new System.Exception(stat + " cannot be parsed as a command list in Enemy (Or the functionality hasn't been implemented yet).");
-    }
-
-    public void UpdateDisplay(ref UpdateStats theDelegate)
-    {
-
+        
     }
 }

@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -14,86 +12,55 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
     Color AP_THREE = new Color32(255, 150, 0, 255);
     Color AP_MAX = new Color32(255, 0, 255, 255);
 
-    //The stat block to read from
-    IStatReader statBlock;
-    Dictionary<Stats, List<GameObject>> displayDictionary = new Dictionary<Stats, List<GameObject>>(); //I may not need this, so I might delete it later
-
     //Mouse events
     event Action onLeftClick;
     event Action onRightClick;
 
-    void Awake()
-    {
-        //Reset everything for simplicity's sake
-        statBlock = null;
-        displayDictionary.Clear();
-    }
-    public void AssignStatBlock(IStatReader statBlock)
-    {
-        //First thing's first: Copy the stat block
-        this.statBlock = statBlock;
+    //Stat block
+    public IStatReader statBlock { get { return _statBlock; } set { AssignStatBlock(value); } }
+    private IStatReader _statBlock;
 
-        //Display every stat possible. Just scattershot it. This is really only meant to be called once during the screen transition
+
+
+    public bool ExtractCombatant(out CombatantInfo combatant)
+    {
+        try { combatant = (CombatantInfo)statBlock; return true; }
+        catch { combatant = null; return false; }
+    }
+
+    void AssignStatBlock(IStatReader inStatBlock)
+    {
+        //Actual assignment
+        _statBlock = inStatBlock;
+
+        //Run down the list of stats to display
         foreach (Transform display in GetComponentsInChildren<Transform>())
         {
-            //I guess I can switch tags
             switch (display.tag)
             {
                 case "Sprite":
-                    if (display.TryGetComponent(out Image sprite))
-                    {
-                        sprite.sprite = statBlock.ReadImage();
-                        if (!displayDictionary.ContainsKey(Stats.SPRITE)) { displayDictionary.Add(Stats.SPRITE, new List<GameObject> { display.gameObject }); }
-                        else { displayDictionary[Stats.SPRITE].Add(display.gameObject); }
-                    }
+                    if (display.TryGetComponent(out Image image)) { image.sprite = _statBlock.ReadImage(); }
                     break;
                 case "Name":
-                    if (display.TryGetComponent(out Text name))
-                    {
-                        name.text = statBlock.ReadString(Stats.NAME);
-                        if (!displayDictionary.ContainsKey(Stats.NAME)) { displayDictionary.Add(Stats.NAME, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.NAME].Add(display.gameObject); }
-                    }
+                    if (display.TryGetComponent(out Text nameText)) { nameText.text = _statBlock.ReadString(Stats.NAME); }
                     break;
                 case "Job":
-                    if (display.TryGetComponent(out Text job))
-                    {
-                        job.text = statBlock.ReadString(Stats.JOB);
-                        if (!displayDictionary.ContainsKey(Stats.JOB)) { displayDictionary.Add(Stats.JOB, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.JOB].Add(display.gameObject); }
-                    }
+                    if (display.TryGetComponent(out Text jobText)) { jobText.text = _statBlock.ReadString(Stats.JOB); }
                     break;
                 case "Level":
-                    if (display.TryGetComponent(out Text level))
-                    {
-                        level.text = "Lv. " + statBlock.ReadInt(Stats.LVL);
-                        if (!displayDictionary.ContainsKey(Stats.LVL)) { displayDictionary.Add(Stats.LVL, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.LVL].Add(display.gameObject); }
-                    }
+                    if (display.TryGetComponent(out Text lvlText)) { lvlText.text = "Lv. " + _statBlock.ReadInt(Stats.LVL); }
                     break;
                 case "HP":
-                    if (display.TryGetComponent(out Text hp))
-                    {
-                        hp.text = statBlock.ReadInt(Stats.CHP) + "/" + statBlock.ReadInt(Stats.MHP);
-                        if (!displayDictionary.ContainsKey(Stats.CHP)) { displayDictionary.Add(Stats.CHP, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.CHP].Add(display.gameObject); }
-                    }
+                    if (display.TryGetComponent(out Text hpText)) { hpText.text = _statBlock.ReadInt(Stats.CHP) + "/" + _statBlock.ReadInt(Stats.MHP); }
                     break;
                 case "MP":
-                    if (display.TryGetComponent(out Text mp))
-                    {
-                        mp.text = statBlock.ReadInt(Stats.CMP) + "/" + statBlock.ReadInt(Stats.MMP);
-                        if (!displayDictionary.ContainsKey(Stats.CMP)) { displayDictionary.Add(Stats.CMP, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.CMP].Add(display.gameObject); }
-                    }
+                    if (display.TryGetComponent(out Text mpText)) { mpText.text = _statBlock.ReadInt(Stats.CMP) + "/" + _statBlock.ReadInt(Stats.MMP); }
                     break;
                 case "HP Meter":
                     if (display.TryGetComponent(out RectTransform hpMeter) && display.parent.TryGetComponent(out RectTransform hpBack))
                     {
                         float maxWidth = hpBack.rect.width;
                         hpMeter.sizeDelta = new Vector2(maxWidth * statBlock.ReadInt(Stats.CHP) / statBlock.ReadInt(Stats.MHP), hpMeter.sizeDelta.y);
-                        if (!displayDictionary.ContainsKey(Stats.CHP)) { displayDictionary.Add(Stats.CHP, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.CHP].Add(display.gameObject); }
                     }
                     break;
                 case "MP Meter":
@@ -101,16 +68,12 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
                     {
                         float maxWidth = mpBack.rect.width;
                         mpMeter.sizeDelta = new Vector2(maxWidth * statBlock.ReadInt(Stats.CMP) / statBlock.ReadInt(Stats.MMP), mpMeter.sizeDelta.y);
-                        if (!displayDictionary.ContainsKey(Stats.CMP)) { displayDictionary.Add(Stats.CMP, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.CMP].Add(display.gameObject); }
                     }
                     break;
                 case "AP":
                     if (display.TryGetComponent(out Text ap))
                     {
                         ap.text = statBlock.ReadInt(Stats.AP).ToString();
-                        if (!displayDictionary.ContainsKey(Stats.AP)) { displayDictionary.Add(Stats.AP, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.AP].Add(display.gameObject); }
                     }
                     break;
                 case "AP Meter":
@@ -119,49 +82,90 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
                         float maxHeight = apBack.rect.height;
                         apMeter.sizeDelta = new Vector2(apMeter.sizeDelta.x, maxHeight * statBlock.ReadFloat(Stats.AP));
                         if (apMeter.TryGetComponent(out Image meterImage) && apBack.TryGetComponent(out Image backImage)) { UpdateColors(meterImage, backImage); }
-                        if (!displayDictionary.ContainsKey(Stats.AP)) { displayDictionary.Add(Stats.AP, new List<GameObject>() { display.gameObject }); }
-                        else { displayDictionary[Stats.AP].Add(display.gameObject); }
                     }
                     break;
             }
         }
 
-        //Pass on an UpdateStat delegate to what ever event the stat reader wants to use for displays
-        //If I go the dictionary route, the function should see if the dictionary has that stat to display then cycle through the list of objects associated with that stat
-        UpdateStats updateStat = UpdateStat;
-        statBlock.UpdateDisplay(ref updateStat);
+        //Listen for any stat changes in the stat block
+        CharacterDisplay outDisplay = this;
+        statBlock.UpdateDisplay(ref outDisplay);
     }
 
-    public void UpdateStat(Stats stat)
+    public void UpdateStats(Stats stat)
     {
-        //*Cycle through all the game objects under the stat to be updated and update them according to their tag
-        if (displayDictionary.ContainsKey(stat))
+        foreach (Transform display in GetComponentsInChildren<Transform>())
         {
-            foreach (GameObject display in displayDictionary[stat])
+            switch (display.tag)
             {
-                switch (display.tag)
-                {
-                    case "AP":
-                        if (display.TryGetComponent(out Text ap)) { ap.text = statBlock.ReadInt(Stats.AP).ToString(); }
-                        break;
-                    case "AP Meter":
-                        if (display.TryGetComponent(out RectTransform apMeter) && display.transform.parent.TryGetComponent(out RectTransform apBack))
-                        {
-                            float maxHeight = apBack.rect.height;
-                            apMeter.sizeDelta = new Vector2(apMeter.sizeDelta.x, maxHeight * statBlock.ReadFloat(Stats.AP));
-                            if (apMeter.TryGetComponent(out Image meterImage) && apBack.TryGetComponent(out Image backImage)) { UpdateColors(meterImage, backImage); }
-                        }
-                        break;
-                }
+                case "Sprite":
+                    if (display.TryGetComponent(out Image image)) { image.sprite = _statBlock.ReadImage(); }
+                    break;
+                case "Name":
+                    if (display.TryGetComponent(out Text nameText)) { nameText.text = _statBlock.ReadString(Stats.NAME); }
+                    break;
+                case "Job":
+                    if (display.TryGetComponent(out Text jobText)) { jobText.text = _statBlock.ReadString(Stats.JOB); }
+                    break;
+                case "Level":
+                    if (display.TryGetComponent(out Text lvlText)) { lvlText.text = "Lv. " + _statBlock.ReadInt(Stats.LVL); }
+                    break;
+                case "HP":
+                    if (display.TryGetComponent(out Text hpText)) { hpText.text = _statBlock.ReadInt(Stats.CHP) + "/" + _statBlock.ReadInt(Stats.MHP); }
+                    break;
+                case "MP":
+                    if (display.TryGetComponent(out Text mpText)) { mpText.text = _statBlock.ReadInt(Stats.CMP) + "/" + _statBlock.ReadInt(Stats.MMP); }
+                    break;
+                case "HP Meter":
+                    if (display.TryGetComponent(out RectTransform hpMeter) && display.parent.TryGetComponent(out RectTransform hpBack))
+                    {
+                        float maxWidth = hpBack.rect.width;
+                        hpMeter.sizeDelta = new Vector2(maxWidth * statBlock.ReadInt(Stats.CHP) / statBlock.ReadInt(Stats.MHP), hpMeter.sizeDelta.y);
+                    }
+                    break;
+                case "MP Meter":
+                    if (display.TryGetComponent(out RectTransform mpMeter) && display.parent.TryGetComponent(out RectTransform mpBack))
+                    {
+                        float maxWidth = mpBack.rect.width;
+                        mpMeter.sizeDelta = new Vector2(maxWidth * statBlock.ReadInt(Stats.CMP) / statBlock.ReadInt(Stats.MMP), mpMeter.sizeDelta.y);
+                    }
+                    break;
+                case "AP":
+                    if (display.TryGetComponent(out Text ap))
+                    {
+                        ap.text = statBlock.ReadInt(Stats.AP).ToString();
+                    }
+                    break;
+                case "AP Meter":
+                    if (display.TryGetComponent(out RectTransform apMeter) && display.parent.TryGetComponent(out RectTransform apBack))
+                    {
+                        float maxHeight = apBack.rect.height;
+                        apMeter.sizeDelta = new Vector2(apMeter.sizeDelta.x, maxHeight * statBlock.ReadFloat(Stats.AP));
+                        if (apMeter.TryGetComponent(out Image meterImage) && apBack.TryGetComponent(out Image backImage)) { UpdateColors(meterImage, backImage); }
+                    }
+                    break;
             }
         }
     }
 
-    public bool ExtractCombatant(out CombatantInfo combatant)
+    public void DisplayHPChange(int change)
     {
-        try { combatant = (CombatantInfo)statBlock; return true; } 
-        catch { combatant = null; return false; }
+        //I guess I would have it spawn an HP change object that bounces until it deletes itself
+        GameObject hpChange = Instantiate(Resources.Load<GameObject>("Prefabs/HPChange"), transform);
+        hpChange.GetComponent<Text>().text = change.ToString();
+
+        //I need to later put some kind of shader on the object so that it changes the text color if something other than the background is behind it
     }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Left) { onLeftClick?.Invoke(); }
+        else if (eventData.button == PointerEventData.InputButton.Right) { onRightClick?.Invoke(); }
+    }
+
+    //Delegate subscriptions
+    public void SubscribeLeftClick(Action theDelegate) { onLeftClick += theDelegate; }
+    public void SubscribeRightClick(Action theDelegate) { onRightClick += theDelegate; }
 
     void UpdateColors(Image apMeter, Image apBack)
     {
@@ -184,15 +188,4 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
                 break;
         }
     }
-
-    //Click event stuff
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (eventData.button == PointerEventData.InputButton.Left) { onLeftClick?.Invoke(); }
-        else if (eventData.button == PointerEventData.InputButton.Right) { onRightClick?.Invoke(); }
-    }
-
-    //Delegate subscriptions
-    public void SubscribeLeftClick(Action theDelegate) { onLeftClick += theDelegate; }
-    public void SubscribeRightClick(Action theDelegate) { onRightClick += theDelegate; }
 }

@@ -5,17 +5,17 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-[RequireComponent(typeof(Image))]
 public class ActionMenu : MonoBehaviour
 {
     //Return values
-    CombatAction currentAction;
-    List<CombatantInfo> currentTargets;
+    CombatantInfo source;
+    List<CombatantInfo> targets;
+    CombatAction action;
 
     //Misc variables
     GameObject buttonTemplate;
 
-    private void Awake()
+    void Awake()
     {
         //Reawaken the image just in case
         GetComponent<Image>().enabled = true;
@@ -27,10 +27,17 @@ public class ActionMenu : MonoBehaviour
         if (buttonTemplate == null) { buttonTemplate = Resources.Load<GameObject>("Prefabs/ActionButton"); }
     }
 
-    //Public functions
-    public void PopulateMenu(IStatReader statBlock)
+    public void PopulateMenu(CombatantInfo combatant)
     {
-        int commandsAvailable = 1 + Convert.ToInt32(statBlock.ReadCommands(Stats.JOB) != null) + Convert.ToInt32(statBlock.ReadCommands(Stats.SJB) != null);
+        //Assign source
+        source = combatant;
+
+        //Resize the menu to fit all the commands it will need
+        int commandsAvailable = 1 + Convert.ToInt32(combatant.ReadCommands(Stats.JOB) != null) + Convert.ToInt32(combatant.ReadCommands(Stats.SJB) != null);
+        GetComponent<RectTransform>().sizeDelta =
+            new Vector2(GetComponent<RectTransform>().sizeDelta.x, buttonTemplate.GetComponent<RectTransform>().sizeDelta.y * commandsAvailable);
+
+        //Create commands
         for (int i = 0; i < commandsAvailable; i++)
         {
             //Instantiate a new button and attach it to the action menu
@@ -42,7 +49,6 @@ public class ActionMenu : MonoBehaviour
         }
     }
 
-    //Private functions
     void CreateCommandButton(ref GameObject button, CommandInfo info, bool bold)
     {
         if (button.TryGetComponent(out Button buttonComp))
@@ -64,8 +70,8 @@ public class ActionMenu : MonoBehaviour
         GetComponent<Image>().enabled = false;
         foreach (Transform child in transform) { child.gameObject.SetActive(false); }
 
-        //Assign currentAction as info's delegate
-        currentAction = info.action;
+        //Assign action
+        action = info.action;
 
         //Preselect targets for target tags that require such a thing and simply wait for confirmation (Self, All, AllElse, and Field)
         if (info.tag == TargetTag.SELF || info.tag == TargetTag.ALL || info.tag == TargetTag.ALL_ELSE || info.tag == TargetTag.FIELD)
@@ -83,7 +89,7 @@ public class ActionMenu : MonoBehaviour
             Image buffer = null;
             PointerEventData pointer = new PointerEventData(EventSystem.current); //Keep an eye on this for clearing the event buffer on ATB return
             TargetTag proxyTag = info.tag; //Really only for use with the variable tag
-            while (currentTargets == null)
+            while (targets == null)
             {
                 //Clear buffer
                 if (buffer != null) { buffer.color *= new Vector4(1, 1, 1, 0); buffer = null; }
@@ -104,7 +110,7 @@ public class ActionMenu : MonoBehaviour
 
                             //Click procedure
                             if (Input.GetMouseButtonDown(0) && results[0].gameObject.TryGetComponent(out CharacterDisplay display))
-                            { if (display.ExtractCombatant(out CombatantInfo combatant)) { currentTargets = new List<CombatantInfo> { combatant }; } }
+                            { if (display.ExtractCombatant(out CombatantInfo combatant)) { targets = new List<CombatantInfo> { combatant }; } }
 
                             break;
                     }
@@ -116,28 +122,25 @@ public class ActionMenu : MonoBehaviour
                 yield return null;
             }
 
-            //Clear the buffer one last time
+            //I do need to clear the buffer here if nothing else
             if (buffer != null) { buffer.color *= new Vector4(1, 1, 1, 0); buffer = null; }
         }
 
-        //Ship off the delegate and targets to the Battle Manager
-        BattleManager.instance.actionQueue[0].action = currentAction;
-        BattleManager.instance.actionQueue[0].targets = currentTargets;
+        //Pass the action to the battle manager and restart it
+        BattleManager.instance.AddAction(source, action, targets);
+        BattleManager.instance.ready = true;
 
-        //Delete all buttons
+        //Close the action menu
         foreach (Transform child in transform) { Destroy(child.gameObject); }
-
-        //Wipe the component
-        currentTargets = null;
+        source = null; action = null; targets = null;
         GetComponent<Image>().enabled = true;
         gameObject.SetActive(false);
     }
 
     //Universal commands
-    string Attack(CombatantInfo source, List<CombatantInfo> targets)
+    void Attack(CombatantInfo source, List<CombatantInfo> targets)
     {
-        int damage = (int)((source.ReadInt(Stats.PATK) - targets[0].ReadInt(Stats.PDEF)) * (1 + (source.ReadInt(Stats.LVL) / 4)) * UnityEngine.Random.Range(0.8f, 1));
+        int damage = source.pAtk - targets[0].pDef;
         targets[0].currentHP -= damage;
-        return source.name + " attacked " + targets[0].name + " and dealt " + damage.ToString() + " damage.";
     }
 }
