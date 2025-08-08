@@ -5,6 +5,8 @@ public partial class BattleManager : MonoBehaviour
 {
     class EnemyInfo : CombatantInfo
     {
+
+
         public EnemyInfo(IStatReader statBlock, string name) : base(statBlock, name)
         {
             //HP/MP
@@ -19,10 +21,18 @@ public partial class BattleManager : MonoBehaviour
             throw new System.NotImplementedException();
         }
 
+        public override void UpdateDisplay(ref CharacterDisplay display)
+        {
+            base.UpdateDisplay(ref display);
+            onDeath += display.FadeOut;
+        }
+
         protected override void OnDeath()
         {
-            print(name + " has died");
+            enabled = false;
+            //I should then trigger an event to disable the character display object
 
+            //Finally I ask the battle manager to perform a wincon check
         }
     }
 

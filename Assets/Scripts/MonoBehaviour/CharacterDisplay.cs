@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -12,6 +13,9 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
     Color AP_THREE = new Color32(255, 150, 0, 255);
     Color AP_MAX = new Color32(255, 0, 255, 255);
 
+    //Other constants
+    float FADE_SPEED = 1.5f;
+
     //Mouse events
     event Action onLeftClick;
     event Action onRightClick;
@@ -20,7 +24,13 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
     public IStatReader statBlock { get { return _statBlock; } set { AssignStatBlock(value); } }
     private IStatReader _statBlock;
 
+    //Misc variable
+    Vector2 displayDimensions;
 
+    void Awake()
+    {
+        if (displayDimensions == Vector2.zero) { displayDimensions = GetComponent<RectTransform>().sizeDelta; }
+    }
 
     public bool ExtractCombatant(out CombatantInfo combatant)
     {
@@ -155,6 +165,17 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
         hpChange.GetComponent<Text>().text = change.ToString();
 
         //I need to later put some kind of shader on the object so that it changes the text color if something other than the background is behind it
+    }
+
+    public void FadeOut() { StartCoroutine(FadeOutProcedure()); }
+    IEnumerator FadeOutProcedure()
+    {
+        float alphaDecay = 1;
+        while (alphaDecay > 0)
+        {
+            yield return null;
+        }
+        GetComponent<RectTransform>().sizeDelta = Vector2.zero;
     }
 
     public void OnPointerClick(PointerEventData eventData)

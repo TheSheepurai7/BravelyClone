@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -38,11 +39,13 @@ public abstract class CombatantInfo : IStatReader
     //Constants
     const int AP_MAX = 3000;
 
-    //Event
+    //Events
     public event StatFunction onUpdate;
     public event HPChange onHPChange;
+    public event Action onDeath;
 
     //Stats
+    public bool enabled = true;
     public readonly Sprite sprite;
     public readonly string name;
     public readonly int pAtk;
@@ -115,7 +118,7 @@ public abstract class CombatantInfo : IStatReader
     }
 
     //I think I can change this to a display link 
-    public void UpdateDisplay(ref CharacterDisplay display)
+    public virtual void UpdateDisplay(ref CharacterDisplay display)
     {
         onUpdate += display.UpdateStats;
         onHPChange += display.DisplayHPChange;
