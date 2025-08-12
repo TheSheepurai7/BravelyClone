@@ -21,11 +21,11 @@ public class EncounterSelect : MonoBehaviour
     Encounter selectEncounter;
     Image currentSelect;
 
-    void Awake()
+    void OnEnable()
     {
         //Cache templates
-        encounterDisplay = Resources.Load<GameObject>("Prefabs/EncounterDisplay");
-        jobDisplay = Resources.Load<GameObject>("Prefabs/JobButton");
+        if (encounterDisplay == null) encounterDisplay = Resources.Load<GameObject>("Prefabs/EncounterDisplay");
+        if (jobDisplay == null) jobDisplay = Resources.Load<GameObject>("Prefabs/JobButton");
 
         //Run down the list of encounters and create a functioning button for each of them
         foreach (Encounter encounter in encounters)
@@ -47,6 +47,7 @@ public class EncounterSelect : MonoBehaviour
         }
 
         //Run down the list of jobs and create a functioning button for each of them (In theory)
+        //The first time around it creates buttons just fine. The second time it seems to be having some difficulty
         if (jobHolder == null) { jobHolder = new GameObject().transform; }
         jobs = new List<Job>();
         for (int i = 1; i < Enum.GetNames(typeof(Job)).Length - 1; i++) 
@@ -91,10 +92,14 @@ public class EncounterSelect : MonoBehaviour
             GameObject partyManager = transform.parent.GetChild(1).gameObject;
             partyManager.SetActive(true);
             int counter = 0;
-            foreach(CharacterDisplay display in partyManager.GetComponentsInChildren<CharacterDisplay>())
+            foreach (CharacterDisplay display in partyManager.GetComponentsInChildren<CharacterDisplay>())
             {
                 display.statBlock = PartyManager.instance.GetStatBlock(counter++);
             }
+
+            //Completely clear the screen so repeated visits don't duplicate everything
+            foreach (Transform child in encounterHolder.transform) { Destroy(child.gameObject); }
+            foreach (Transform child in jobHolder.transform) { Destroy(child.gameObject); }
 
             //Hide this screen
             gameObject.SetActive(false);

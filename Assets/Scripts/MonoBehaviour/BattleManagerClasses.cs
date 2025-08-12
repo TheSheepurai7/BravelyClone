@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,7 +6,9 @@ public partial class BattleManager : MonoBehaviour
 {
     class EnemyInfo : CombatantInfo
     {
-
+        //Events
+        event Action onDeath;
+        event Action onRevive;
 
         public EnemyInfo(IStatReader statBlock, string name) : base(statBlock, name)
         {
@@ -25,14 +28,14 @@ public partial class BattleManager : MonoBehaviour
         {
             base.UpdateDisplay(ref display);
             onDeath += display.FadeOut;
+            onRevive += display.Restore;
         }
 
         protected override void OnDeath()
         {
             enabled = false;
-            //I should then trigger an event to disable the character display object
-
-            //Finally I ask the battle manager to perform a wincon check
+            onDeath?.Invoke();
+            instance.CheckWinCondition();
         }
     }
 

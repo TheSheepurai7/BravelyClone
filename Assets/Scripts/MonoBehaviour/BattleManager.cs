@@ -98,4 +98,25 @@ public partial class BattleManager : MonoBehaviour
     {
         actionQueue.Add(() => action(source, targets));
     }
+
+    void CheckWinCondition()
+    {
+        //Actually test the win condition
+        bool wincon = true;
+        foreach (EnemyInfo enemy in enemies)
+        {
+            if (enemy.enabled) { wincon = false; break; }
+        }
+
+        //Process wincon if met
+        if (wincon)
+        {
+            //Cease all potential for operations from this side
+            ready = false;
+
+            //Tell the battle GFX to run the victory procedure
+            //Guess I don't have to disable the events. So that's one problem taken care of
+            StartCoroutine(BattleGFX.instance.VictoryProcedure());
+        }
+    }
 }

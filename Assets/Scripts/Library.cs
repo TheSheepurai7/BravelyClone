@@ -40,9 +40,8 @@ public abstract class CombatantInfo : IStatReader
     const int AP_MAX = 3000;
 
     //Events
-    public event StatFunction onUpdate;
-    public event HPChange onHPChange;
-    public event Action onDeath;
+    event StatFunction onUpdate;
+    event HPChange onHPChange;
 
     //Stats
     public bool enabled = true;

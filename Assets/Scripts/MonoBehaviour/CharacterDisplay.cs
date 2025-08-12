@@ -166,15 +166,38 @@ public class CharacterDisplay : MonoBehaviour, IPointerClickHandler
 
         //I need to later put some kind of shader on the object so that it changes the text color if something other than the background is behind it
     }
+    
+    public void Restore()
+    {
+        GetComponent<RectTransform>().sizeDelta = displayDimensions;
+        foreach(Transform t in transform)
+        {
 
+            if (t.TryGetComponent(out Image image)) { image.color = (Color)new Vector4(1, 1, 1, 1); }
+            if (t.TryGetComponent(out Text text)) { text.color = (Color)new Vector4(1, 1, 1, 1); }
+        }
+    }
     public void FadeOut() { StartCoroutine(FadeOutProcedure()); }
     IEnumerator FadeOutProcedure()
     {
         float alphaDecay = 1;
         while (alphaDecay > 0)
         {
+            //Decay alpha
+            alphaDecay = Mathf.Clamp(alphaDecay - Time.deltaTime * FADE_SPEED, 0, 1);
+
+            //Apply the alpha decay to child components
+            foreach (Transform t in transform)
+            {
+
+                if (t.TryGetComponent(out Image image)) { image.color = (Color)new Vector4(1, alphaDecay, alphaDecay, alphaDecay); }
+                if (t.TryGetComponent(out Text text)) { text.color = (Color)new Vector4(1, alphaDecay, alphaDecay, alphaDecay); }
+            }
+
+            //Wait until next frame
             yield return null;
         }
+
         GetComponent<RectTransform>().sizeDelta = Vector2.zero;
     }
 
