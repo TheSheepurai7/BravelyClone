@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 119393481328992680}
   - component: {fileID: 8911570055714567708}
   - component: {fileID: 5326282098238367789}
-  - component: {fileID: 3368355301247398289}
+  - component: {fileID: 689558817117952378}
   m_Layer: 5
   m_Name: HPChange
   m_TagString: Untagged
@@ -79,8 +79,8 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 
---- !u!114 &3368355301247398289
+  m_Text: 31
+--- !u!114 &689558817117952378
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -89,9 +89,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 3407522015929252112}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d14ea9663337404496b9a8d0d452114, type: 3}
+  m_Script: {fileID: 11500000, guid: cd82ad0e3ce927546a6487ad1aad7607, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seconds: 0.75
-  heightOffset: 0.1
-  depthOffset: -0.02
+  seconds: 0.6
+  heightOffset: 0.2
+  depthOffset: -0.025

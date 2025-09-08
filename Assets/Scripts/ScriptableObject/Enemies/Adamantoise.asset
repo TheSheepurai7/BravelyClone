@@ -13,15 +13,9 @@ MonoBehaviour:
   m_Name: Adamantoise
   m_EditorClassIdentifier: 
   sprite: {fileID: 4543304768714263812, guid: e2512f722122e0346a1d3e368dc1b3ef, type: 3}
-  hP: 30
+  ai: {fileID: 11400000, guid: 4631936dab0571049bf757e891eb8afc, type: 2}
+  hP: 650
   mP: 0
-  pAtk: 63
-  mAtk: 0
-  iNT: 0
-  pDef: 8
-  mDef: 0
-  mND: 0
-  sPD: 8
-  jP: 463
-  xP: 0
-  pG: 0
+  pAtk: 175
+  pDef: 20
+  spd: 8
