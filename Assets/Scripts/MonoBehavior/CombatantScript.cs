@@ -85,7 +85,7 @@ public abstract class CombatantScript : MonoBehaviour
         GameObject damageInstance = Instantiate(damageDisplay, transform);
         if (damageInstance.TryGetComponent(out Text text))
         {
-            text.text = value.ToString();
+            text.text = Mathf.Abs(value).ToString();
             text.color = value < 0 ? Color.green : Color.white;
         }
     }

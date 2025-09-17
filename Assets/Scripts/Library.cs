@@ -19,17 +19,31 @@ public interface IStatBlock { public StatBlock ExportStatBlock(); }
 public abstract class CommandInfo //I should have this be abstract and have an ActionInfo and MenuInfo that inherit from it
 {
     public readonly string name;
-    public readonly TargetTag tag;
-    public readonly CombatAction action;
-    public CommandInfo(string name, TargetTag tag, CombatAction action) { this.name = name; this.tag = tag; this.action = action; }
-    //public CommandInfo(string name) { this.name = name; }
+    //public readonly TargetTag tag;
+    //public readonly CombatAction action;
+    //public CommandInfo(string name, TargetTag tag, CombatAction action) { this.name = name; this.tag = tag; this.action = action; }
+    public CommandInfo(string name) { this.name = name; }
 }
 
-public struct MenuInfo
+public class ActionInfo : CommandInfo
 {
-    public readonly string name;
+    public readonly TargetTag tag;
+    public readonly CombatAction action;
+
+    public ActionInfo(string name, TargetTag tag, CombatAction action) : base(name)
+    {
+        this.tag = tag;
+        this.action = action;
+    }
+}
+
+public class MenuInfo : CommandInfo
+{
     public readonly List<CommandInfo> commands;
-    public MenuInfo(string name, List<CommandInfo> commands) { this.name = name; this.commands = commands; }
+    public MenuInfo(string name, List<CommandInfo> commands) : base(name)
+    { 
+        this.commands = commands;
+    }
 }
 
 //Classes
@@ -46,7 +60,7 @@ public class StatBlock
     public float aP;
 
     //Accessors
-    public int currentHP { get { return _currentHP; } set { onHPChanged?.Invoke(_currentHP - value); _currentHP = value; if (_currentHP <= 0) { onDeath?.Invoke(); } } }
+    public int currentHP { get { return _currentHP; } set { onHPChanged?.Invoke(_currentHP - value); _currentHP = Mathf.Clamp(value, 0, maxHP); if (_currentHP <= 0) { onDeath?.Invoke(); } } }
     public int currentMP { get { return _currentMP; } }
     int _apMax = 4000;
     public int apMax { get { return _apMax; } set { _apMax = 4000 - (int)(2500 * ((spd - value) / 98f)); } } //Takes lowest speed as input

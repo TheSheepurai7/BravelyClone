@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEditor.Experimental.GraphView;
 
 public class GameManager : MonoBehaviour
 {
@@ -46,21 +45,35 @@ public class GameManager : MonoBehaviour
         CreateEnemies();
         playerParty = new List<CharacterData>() { new CharacterData(Character.ALEC, 4) , new CharacterData(Character.MARISA, 4),
             new CharacterData(Character.JENNA, 4) , new CharacterData(Character.GARETH, 4) };
-        inventory = new Dictionary<Consumable, int>(); inventory.Add(Resources.Load<Consumable>("Potion"), 5);
+        inventory = new Dictionary<Consumable, int> { { new Consumable("Potion", TargetTag.SINGLE, ConsumableEffects.Potion), 5 } };
     }
 
     // Update is called once per frame
     void Update()
     {
+        //Basically just time scale
         if (ready)
         {
             onUpdate(Time.deltaTime);
         }
+
+        //
     }
 
     public void CloseActionMenu(ref StatBlock statBlock)
     {
         if (actionMenu != null && actionMenu.TryGetComponent(out ActionMenu menu)) { if (statBlock == menu.source) { Destroy(actionMenu.gameObject); } }
+    }
+
+    public void RemoveItem(Consumable consumable)
+    {
+        if (inventory.ContainsKey(consumable)) { inventory[consumable]--; }
+        else { print("Key not found"); }
+    }
+
+    public void ForceGlobalThreat(ref StatBlock source, int amt)
+    {
+        foreach(EnemyScript enemy in enemyGroup.GetComponentsInChildren<EnemyScript>()) { enemy.statBlock.GenerateThreat(ref source, amt); }
     }
 
     public void CreateEnemies()
@@ -112,7 +125,7 @@ public class GameManager : MonoBehaviour
         foreach (StatBlock combatant in combatants) { combatant.apMax = combatants[0].spd; }
 
         //Set initial AP of each combatant
-        for(int i = 0; i < combatants.Count; i++)
+        for (int i = 0; i < combatants.Count; i++)
         {
             combatants[i].aP = (int)(combatants[i].apMax * ((i + 1f) / (combatants.Count + 2f))); //Add randomness later
         }
@@ -134,7 +147,7 @@ public class GameManager : MonoBehaviour
         actionMenu.GetComponent<RectTransform>().anchoredPosition = Input.mousePosition;
 
         //Open the action menu
-        actionMenu.GetComponent<ActionMenu>().PopulateMenu(ref requester, null);
+        actionMenu.GetComponent<ActionMenu>().PopulateMenu(ref requester, null, CreateMenu());
     }
 
     public void SetLoseCon()
@@ -201,7 +214,7 @@ public class GameManager : MonoBehaviour
         battleDisplay.text = string.Empty;
         readyButton.gameObject.SetActive(true);
         onUpdate = null;
-        for (int i = 0; i < Mathf.Max(enemyGroup.transform.childCount, playerGroup.transform.childCount);  i++)
+        for (int i = 0; i < Mathf.Max(enemyGroup.transform.childCount, playerGroup.transform.childCount); i++)
         {
             if (i < enemyGroup.transform.childCount) { Destroy(enemyGroup.transform.GetChild(i).gameObject); }
             if (i < playerGroup.transform.childCount) { Destroy(playerGroup.transform.GetChild(i).gameObject); }
@@ -217,5 +230,33 @@ public class GameManager : MonoBehaviour
         CreateEnemies();
         playerParty = new List<CharacterData>() { new CharacterData(Character.ALEC, 4), new CharacterData(Character.MARISA, 4),
             new CharacterData(Character.JENNA, 4), new CharacterData(Character.GARETH, 4) };
+    }
+
+    List<CommandInfo> CreateMenu()
+    {
+        //Attack is pretty much guaranteed to be here
+        List<CommandInfo> returnValue = new List<CommandInfo>() { new ActionInfo("Attack", TargetTag.SINGLE, Attack) };
+
+        //Now how to create the item command
+        List<CommandInfo> inventoryList = new List<CommandInfo>();
+        foreach (KeyValuePair<Consumable, int> item in inventory) 
+        {
+            if (item.Value > 0) { inventoryList.Add(new ActionInfo(item.Key.name + " x" + item.Value, item.Key.tag, item.Key.Use)); }
+        }
+        returnValue.Add(new MenuInfo("Item", inventoryList));
+
+        //Give me the menu
+        return returnValue;
+    }
+
+    void Attack(StatBlock source, List<StatBlock> targets)
+    {
+        //First subtract the AP for the action
+        source.aP -= source.apMax;
+
+        //Calculate and apply damage
+        int damage = (int)Mathf.Clamp((source.pAtk - targets[0].pDef) * UnityEngine.Random.Range(0.8f, 1), 1, Mathf.Infinity);
+        targets[0].currentHP -= damage;
+        targets[0].GenerateThreat(ref source, damage);
     }
 }

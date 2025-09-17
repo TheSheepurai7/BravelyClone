@@ -8,9 +8,10 @@ using UnityEngine.UI;
 public class ActionMenu : MonoBehaviour
 {
     //Action components
-    public StatBlock source { get; private set; }
+    public StatBlock source { get { return _source; } private set { _source = value; } }
+    StatBlock _source;
     List<StatBlock> targets;
-    CommandInfo action;
+    ActionInfo action;
 
     //Misc variables
     ActionMenu parent;
@@ -22,7 +23,7 @@ public class ActionMenu : MonoBehaviour
     void Awake()
     {
         //The GameManager must be detectable
-        if (GameManager.instance == null ) { Destroy(gameObject); }
+        if (GameManager.instance == null) { Destroy(gameObject); }
 
         //Cache the button template if not already cached
         if (buttonTemplate == null) { buttonTemplate = Resources.Load<GameObject>("Prefabs/ActionButton"); }
@@ -31,13 +32,14 @@ public class ActionMenu : MonoBehaviour
     void Update()
     {
         //I need the ability to go back
+        //I wonder if I can just deactivate the parent action menu entirely when a child menu is populated.
         if (Input.GetMouseButtonDown(1))
         {
             //An action hasn't been selected yet, so I should clear the whole thing
             if (action.Equals(default(CommandInfo)))
             {
                 foreach (Transform t in transform) { Destroy(t.gameObject); }
-                source = null; action = default(CommandInfo); targets = null;
+                source = null; action = null; targets = null;
                 GameManager.instance.ready = true;
                 gameObject.SetActive(false);
             }
@@ -47,56 +49,65 @@ public class ActionMenu : MonoBehaviour
             {
                 StopCoroutine(pollTarget); pollTarget = null;
                 if (buffer != null) { buffer.color *= new Vector4(1, 1, 1, 0); buffer = null; }
-                action = default(CommandInfo);
+                action = null;
                 GetComponent<Image>().enabled = true;
                 foreach (Transform t in transform) { t.gameObject.SetActive(true); }
             }
         }
     }
 
-    public void EnableMenu(bool buttons, bool images)
+    public void DestroyRoot()
     {
-
+        if (parent != null) { parent.DestroyRoot(); }
+        else { Destroy(gameObject); }
     }
 
-    public void PopulateMenu(ref StatBlock statBlock, ActionMenu parent) //Instead of hard-coding Attack and Item and all that stuff I should have commands as arguments
+    public void EnableMenu(bool buttons, bool images)
+    {
+        if (parent != null) { parent.EnableMenu(buttons, images); }
+        foreach (Button button in GetComponentsInChildren<Button>()) { button.enabled = buttons; }
+        foreach (Text text in GetComponentsInChildren<Text>()) { text.enabled = images; }
+        foreach (Image image in GetComponentsInChildren<Image>()) { image.enabled = images; }
+    }
+
+    public void PopulateMenu(ref StatBlock statBlock, ActionMenu parent, List<CommandInfo> commands) 
     {
         //Assign parent
         this.parent = parent;
+        //Disable the parent's buttons if there's a parent at all
+        if (this.parent != null) { parent.EnableMenu(false, true); }
 
         //Assign source
         source = statBlock;
 
-        //Resize the menu to fit all the commands it will need (For now it's just attack)
-        int commandsAvailable = 2; // + Convert.ToInt32(combatant.ReadCommands(Stats.JOB) != null) + Convert.ToInt32(combatant.ReadCommands(Stats.SJB) != null);
+        //Resize the menu to fit all the commands it will need
         GetComponent<RectTransform>().sizeDelta =
-            new Vector2(GetComponent<RectTransform>().sizeDelta.x, buttonTemplate.GetComponent<RectTransform>().sizeDelta.y * commandsAvailable);
+            new Vector2(GetComponent<RectTransform>().sizeDelta.x, buttonTemplate.GetComponent<RectTransform>().sizeDelta.y * commands.Count);
 
         //Create commands
-        for (int i = 0; i < commandsAvailable; i++)
+        for (int i = 0; i < commands.Count; i++)
         {
             //Instantiate a new button and attach it to the action menu
             GameObject button = Instantiate(buttonTemplate, transform);
 
-            //Rename the button and assign it functionality based on order
-            //if (i == 0) { CreateCommandButton(ref button, new CommandInfo("Attack", TargetTag.SINGLE, Attack), false); } //Attack
-            //else if (i == commandsAvailable - 1) { CreateSubMenu(ref button, new MenuInfo("Item", new List<CommandInfo>()), false); } //Item
+            //Assign the button functionality
+            if (commands[i] is ActionInfo) { CreateCommandButton(ref button, (ActionInfo)commands[i]); }
+            else if (commands[i] is MenuInfo) { CreateSubMenu(ref button, (MenuInfo)commands[i]); }
         }
     }
 
-    void CreateCommandButton(ref GameObject button, CommandInfo info, bool bold)
+    void CreateCommandButton(ref GameObject button, ActionInfo info)
     {
         if (button.TryGetComponent(out Button buttonComp))
         {
             if (button.GetComponentInChildren<Text>() != null)
             {
-                if (bold) { button.GetComponentInChildren<Text>().fontStyle = FontStyle.Bold; }
                 button.GetComponentInChildren<Text>().text = info.name;
                 buttonComp.onClick.AddListener(() =>
                 {
                     action = info;
                     GetComponent<Image>().enabled = false;
-                    foreach (Transform t in transform) { t.gameObject.SetActive(false); }
+                    EnableMenu(false, false);
                     pollTarget = StartCoroutine(PollTarget());
                 });
             }
@@ -105,15 +116,29 @@ public class ActionMenu : MonoBehaviour
         else { throw new Exception("Button template needs a button component otherwise why are you calling it a button?"); }
     }
 
-    void CreateSubMenu(ref GameObject button, MenuInfo info, bool bold)
+    void CreateSubMenu(ref GameObject button, MenuInfo info)
     {
         if (button.TryGetComponent(out Button buttonComp))
         {
             if (button.GetComponentInChildren<Text>() != null)
             {
-                if (bold) { button.GetComponentInChildren<Text>().fontStyle = FontStyle.Bold; }
+                //Set the name
                 button.GetComponentInChildren<Text>().text = info.name;
-                buttonComp.onClick.AddListener(() => { print("Accessed " + info.name); });
+
+                //Functionality depends on if there's any menu info at all
+                if (info.commands.Count > 0)
+                {
+                    buttonComp.onClick.AddListener(() =>
+                    {
+                        GameObject subMenu = Instantiate(gameObject, transform.parent);
+                        subMenu.GetComponent<RectTransform>().anchoredPosition = Input.mousePosition;
+                        foreach (Transform child in subMenu.transform) { Destroy(child.gameObject); }
+                        subMenu.GetComponent<ActionMenu>().PopulateMenu(ref _source, this, info.commands);
+                    });
+                }
+
+                //Otherwise gray out the button
+                else { button.GetComponentInChildren<Text>().color = Color.gray; }
             }
             else { throw new Exception("Button template needs a text component to print to"); }
         }
@@ -177,17 +202,8 @@ public class ActionMenu : MonoBehaviour
 
         //Check for a wincon and close the menu regardless
         GameManager.instance.ready = !GameManager.instance.winconMet;
-        Destroy(gameObject);
+        DestroyRoot();
     }
 
-    void Attack(StatBlock source, List<StatBlock> targets)
-    {
-        //First subtract the AP for the action
-        source.aP -= source.apMax;
-
-        //Calculate and apply damage
-        int damage = (int)Mathf.Clamp((source.pAtk - targets[0].pDef) * UnityEngine.Random.Range(0.8f, 1), 1, Mathf.Infinity);
-        targets[0].currentHP -= damage;
-        targets[0].GenerateThreat(ref source, damage);
-    }
+    
 }
